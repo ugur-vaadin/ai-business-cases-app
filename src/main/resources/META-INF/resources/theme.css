@@ -1,0 +1,26 @@
+/*
+ * Nordic Supply demo theme, loaded after Aura. The design is dark with a gold accent and a heavy italic
+ * display face; the app follows the operating system's colour scheme, so the same tokens also define a light variant.
+ * Aura resolves every colour through light-dark(), so the two accent tokens carry the look in both schemes.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,500;0,600;0,700;1,700;1,800&display=swap');
+
+:root {
+  color-scheme: light dark;
+  --aura-accent-color-light-initial: #a8800f;
+  --aura-accent-color-dark-initial: #f0cc58;
+  --aura-accent-color-light: var(--aura-accent-color-light-initial);
+  --aura-accent-color-dark: var(--aura-accent-color-dark-initial);
+  --aura-background-color-light: oklch(0.965 0.006 85);
+  --aura-background-color-dark: oklch(0.15 0.006 80);
+  --app-display-font: "Barlow", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  /* the page ground: near-black at the top, a soft light rising from the bottom edge */
+  --app-ground-top: light-dark(oklch(0.975 0.005 85), oklch(0.105 0.004 80));
+  --app-ground-mid: light-dark(oklch(0.96 0.006 85), oklch(0.14 0.005 80));
+  --app-ground-bottom: light-dark(oklch(0.925 0.008 85), oklch(0.23 0.006 80));
+  --app-glow: light-dark(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.09));
+  --app-panel: light-dark(oklch(0.935 0.006 85), oklch(0.165 0.005 80));
+  --aura-app-background:
+    radial-gradient(70% 45% at 50% 104%, var(--app-glow), transparent 70%),
+    linear-gradient(180deg, var(--app-ground-top) 0%, var(--app-ground-mid) 55%, var(--app-ground-bottom) 100%);
+}

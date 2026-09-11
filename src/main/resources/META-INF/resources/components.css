@@ -1,0 +1,91 @@
+/*
+ * The reusable pieces: the read-only data table, the home tiles and the readme popup.
+ */
+/* ---- read-only tables and the home tiles ---- */
+.data-table {
+  height: 100%;
+}
+.data-table vaadin-text-field {
+  max-width: 360px;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+.tile {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--vaadin-border-color);
+  border-radius: 12px;
+  background: var(--vaadin-background-container);
+  display: grid;
+  gap: 0.2rem;
+}
+.tile .k {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vaadin-text-color-secondary);
+}
+.tile .v {
+  font-family: var(--app-display-font);
+  font-size: 2.1rem;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1;
+  color: var(--aura-accent-text-color);
+  font-variant-numeric: tabular-nums;
+}
+.tile .d {
+  font-size: 0.85rem;
+  color: var(--vaadin-text-color-secondary);
+}
+
+
+/* ---- readme popup: corner card, collapses to a pill ---- */
+.readme-popup {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 10;
+}
+.readme-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem 0.85rem;
+  align-items: center;
+  width: min(440px, calc(100vw - 48px));
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--aura-accent-border-color);
+  border-radius: 14px;
+  background: var(--aura-accent-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+.readme-card .readme-icon {
+  color: var(--aura-accent-text-color);
+}
+.readme-text {
+  display: grid;
+  gap: 0.15rem;
+  cursor: pointer;
+}
+.readme-title {
+  font-weight: 600;
+}
+.readme-teaser {
+  color: var(--vaadin-text-color-secondary);
+  font-size: 0.875rem;
+}
+.readme-actions {
+  display: grid;
+  gap: 0.35rem;
+}
+.readme-pill {
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.readme-dialog vaadin-markdown {
+  max-width: 68ch;
+}

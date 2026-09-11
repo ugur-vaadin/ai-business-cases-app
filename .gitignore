@@ -1,0 +1,21 @@
+target/
+node_modules/
+frontend/generated/
+src/main/frontend/generated/
+src/main/bundles/
+vite.generated.ts
+.idea/
+*.iml
+.DS_Store
+
+# Only the Nordic Supply dataset ships with the application; other packs stay local
+src/main/resources/data/*
+!src/main/resources/data/nordic_supply/
+
+# Development notes and tooling, kept local
+CLAUDE.md
+CODE-AUDIT.md
+DATA-LAYER.md
+DECISIONS.md
+TEST-CASES.md
+scripts/

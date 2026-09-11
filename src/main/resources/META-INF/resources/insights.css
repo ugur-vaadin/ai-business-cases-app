@@ -1,0 +1,171 @@
+/*
+ * Insights: the query panel and its prompt bar, the suggestion chips, the chat in the sidebar and the widgets.
+ */
+.insights-header {
+  width: 100%;
+  align-items: flex-start;
+}
+
+.insights-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.insights-footer {
+  flex: none;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--vaadin-border-color);
+}
+.insights-footer .query-panel {
+  width: 100%;
+  gap: 0.35rem;
+}
+.insights-footer .footnote {
+  font-size: 0.75rem;
+}
+
+.insights .page-panel {
+  justify-content: center;   /* "New Query" sits mid-height */
+}
+.insights .page-panel .sidebar-chat {
+  justify-content: flex-start;
+}
+
+.insights-empty {
+  flex: 1;
+  width: 100%;
+  display: grid;
+  place-content: center;
+  padding-bottom: 8vh;
+}
+.insights-main {
+  flex: 1;
+}
+.query-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(820px, 100%);
+}
+.query-panel .query-title {
+  align-self: flex-start;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+.prompt-bar {
+  width: 100%;
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+  border: 1.5px solid var(--aura-accent-border-color);
+  border-radius: 999px;
+  background: var(--vaadin-background-container);
+}
+.insights-empty .prompt-bar {
+  border-color: var(--aura-accent-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aura-accent-color) 18%, transparent);
+}
+.prompt-bar vaadin-text-field::part(input-field),
+.prompt-bar vaadin-select::part(input-field) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.prompt-bar vaadin-button {
+  border-radius: 999px;
+}
+.chips {
+  gap: 0.5rem;
+  justify-content: center;
+}
+.chips > span {
+  color: var(--vaadin-text-color-secondary);
+  font-size: 0.9rem;
+}
+.chips vaadin-button {
+  border-radius: 999px;
+}
+.footnote {
+  color: var(--vaadin-text-color-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* the chat of the selected widget, in the sidebar */
+.sidebar-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.5rem;
+}
+.sidebar-chat .chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sidebar-chat .chat-header .chat-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-chat .chat-panel {
+  flex: 1;
+  min-height: 0;
+}
+.sidebar-chat .thinking {
+  color: var(--vaadin-text-color-secondary);
+  font-size: 0.9rem;
+  padding-inline: 0.5rem;
+  animation: thinking-pulse 1.4s ease-in-out infinite;
+}
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-chat .thinking { animation: none; }
+}
+.sidebar-chat .suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+.sidebar-chat .suggestions vaadin-button {
+  border-radius: 999px;
+}
+
+/* widgets */
+.insights-dashboard {
+  --vaadin-dashboard-padding: 0;
+}
+.insight-widget .widget-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--vaadin-text-color-secondary);
+}
+.insight-widget vaadin-chart {
+  --vaadin-charts-color-0: var(--aura-accent-color);
+  --vaadin-charts-color-1: oklch(from var(--aura-accent-color) l c calc(h - 40));
+  --vaadin-charts-color-2: oklch(from var(--aura-accent-color) calc(l - 0.25) c h);
+}
+vaadin-dashboard-widget[selected] {
+  outline: 2px solid var(--aura-accent-color);
+  outline-offset: -2px;
+  border-radius: var(--vaadin-dashboard-widget-border-radius, 12px);
+}
+.insight-widget .selected-mark {
+  color: var(--aura-accent-color);
+  width: 22px;
+  height: 22px;
+  margin-inline-start: 0.25rem;
+}
+.insight-widget .widget-progress {
+  margin: 0 0 0.25rem;
+}

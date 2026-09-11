@@ -1,0 +1,637 @@
+{
+  "title": "Nordic Supply order desk",
+  "dashboard_chips": [
+    "Late shipments last month, by week",
+    "Claims open over 7 days",
+    "Backorder lines by category",
+    "Which carrier delivered late most often last month?",
+    "Credit notes issued last month, by reason"
+  ],
+  "message_to_record": {
+    "entity": "claims",
+    "documents": "documents/emails",
+    "number_field": "claim_number",
+    "fields": [
+      "customer_id",
+      "order_id",
+      "shipment_id",
+      "claim_type",
+      "priority",
+      "source",
+      "needed_by",
+      "requested_resolution",
+      "claimed_amount",
+      "description"
+    ],
+    "section_selector": "claim_type",
+    "sections": {
+      "DAMAGED": [
+        "needed_by",
+        "claimed_amount"
+      ],
+      "MISSING_ITEMS": [
+        "needed_by",
+        "claimed_amount"
+      ],
+      "WRONG_ITEM": [
+        "needed_by"
+      ],
+      "LATE_DELIVERY": [
+        "claimed_amount"
+      ],
+      "QUALITY_DEFECT": [
+        "claimed_amount"
+      ],
+      "PRICING_DISPUTE": [
+        "claimed_amount"
+      ],
+      "RETURN_REQUEST": []
+    },
+    "lookups": [
+      {
+        "field": "customer_id",
+        "from": "customers",
+        "label": "name",
+        "search": [
+          "name",
+          "customer_number",
+          "email_domain",
+          "city"
+        ],
+        "show": [
+          "customer_number",
+          "city",
+          "country"
+        ],
+        "filter_by": ""
+      },
+      {
+        "field": "order_id",
+        "from": "orders",
+        "label": "order_number",
+        "filter_by": "customer_id",
+        "search": [
+          "order_number",
+          "customer_reference"
+        ],
+        "show": [
+          "placed_at",
+          "promised_delivery_date",
+          "status"
+        ]
+      },
+      {
+        "field": "shipment_id",
+        "from": "shipments",
+        "label": "shipment_number",
+        "filter_by": "order_id",
+        "search": [
+          "shipment_number",
+          "tracking_number"
+        ],
+        "show": [
+          "delivered_at",
+          "carrier",
+          "pallet_count"
+        ]
+      }
+    ],
+    "field_info": [
+      {
+        "name": "customer_id",
+        "type": "INT",
+        "desc": "-> customers.id",
+        "ref": "customers.id",
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      },
+      {
+        "name": "order_id",
+        "type": "INT",
+        "desc": "-> orders.id",
+        "ref": "orders.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": []
+      },
+      {
+        "name": "shipment_id",
+        "type": "INT",
+        "desc": "-> shipments.id",
+        "ref": "shipments.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": []
+      },
+      {
+        "name": "claim_type",
+        "type": "VARCHAR(20)",
+        "desc": "DAMAGED, MISSING_ITEMS, WRONG_ITEM, LATE_DELIVERY, QUALITY_DEFECT, PRICING_DISPUTE, RETURN_REQUEST",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "DAMAGED",
+          "MISSING_ITEMS",
+          "WRONG_ITEM",
+          "LATE_DELIVERY",
+          "QUALITY_DEFECT",
+          "PRICING_DISPUTE",
+          "RETURN_REQUEST"
+        ]
+      },
+      {
+        "name": "priority",
+        "type": "VARCHAR(10)",
+        "desc": "LOW, NORMAL, HIGH, URGENT",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "LOW",
+          "NORMAL",
+          "HIGH",
+          "URGENT"
+        ]
+      },
+      {
+        "name": "source",
+        "type": "VARCHAR(10)",
+        "desc": "EMAIL, PORTAL, PHONE",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "EMAIL",
+          "PORTAL",
+          "PHONE"
+        ]
+      },
+      {
+        "name": "needed_by",
+        "type": "DATE",
+        "desc": "date the customer needs a resolution by",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": []
+      },
+      {
+        "name": "requested_resolution",
+        "type": "VARCHAR(30)",
+        "desc": "REPLACEMENT, REDELIVERY, CREDIT, REPAIR, RETURN_AUTHORISATION",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [
+          "REPLACEMENT",
+          "REDELIVERY",
+          "CREDIT",
+          "REPAIR",
+          "RETURN_AUTHORISATION"
+        ]
+      },
+      {
+        "name": "claimed_amount",
+        "type": "DECIMAL(12,2)",
+        "desc": "EUR",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": []
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR(1000)",
+        "desc": "the agent's summary",
+        "ref": null,
+        "pii": "free-text",
+        "not_null": false,
+        "vocabulary": []
+      }
+    ],
+    "entity_columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": true
+      },
+      {
+        "name": "claim_number",
+        "type": "VARCHAR(20)",
+        "desc": "e.g. 'CL-2026-00123'",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "customer_id",
+        "type": "INT",
+        "desc": "-> customers.id",
+        "ref": "customers.id",
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "order_id",
+        "type": "INT",
+        "desc": "-> orders.id",
+        "ref": "orders.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "shipment_id",
+        "type": "INT",
+        "desc": "-> shipments.id",
+        "ref": "shipments.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "claim_type",
+        "type": "VARCHAR(20)",
+        "desc": "DAMAGED, MISSING_ITEMS, WRONG_ITEM, LATE_DELIVERY, QUALITY_DEFECT, PRICING_DISPUTE, RETURN_REQUEST",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "DAMAGED",
+          "MISSING_ITEMS",
+          "WRONG_ITEM",
+          "LATE_DELIVERY",
+          "QUALITY_DEFECT",
+          "PRICING_DISPUTE",
+          "RETURN_REQUEST"
+        ],
+        "pk": false
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "desc": "NEW, UNDER_REVIEW, AWAITING_CUSTOMER, APPROVED, REJECTED, RESOLVED, CLOSED",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "NEW",
+          "UNDER_REVIEW",
+          "AWAITING_CUSTOMER",
+          "APPROVED",
+          "REJECTED",
+          "RESOLVED",
+          "CLOSED"
+        ],
+        "pk": false
+      },
+      {
+        "name": "priority",
+        "type": "VARCHAR(10)",
+        "desc": "LOW, NORMAL, HIGH, URGENT",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "LOW",
+          "NORMAL",
+          "HIGH",
+          "URGENT"
+        ],
+        "pk": false
+      },
+      {
+        "name": "source",
+        "type": "VARCHAR(10)",
+        "desc": "EMAIL, PORTAL, PHONE",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [
+          "EMAIL",
+          "PORTAL",
+          "PHONE"
+        ],
+        "pk": false
+      },
+      {
+        "name": "reported_by_contact_id",
+        "type": "INT",
+        "desc": "",
+        "ref": "customer_contacts.id",
+        "pii": "identifier",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "assigned_to",
+        "type": "INT",
+        "desc": "-> staff.id (users); NULL = unassigned",
+        "ref": "users.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "opened_at",
+        "type": "TIMESTAMP",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "resolved_at",
+        "type": "TIMESTAMP",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "needed_by",
+        "type": "DATE",
+        "desc": "date the customer needs a resolution by",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "requested_resolution",
+        "type": "VARCHAR(30)",
+        "desc": "REPLACEMENT, REDELIVERY, CREDIT, REPAIR, RETURN_AUTHORISATION",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [
+          "REPLACEMENT",
+          "REDELIVERY",
+          "CREDIT",
+          "REPAIR",
+          "RETURN_AUTHORISATION"
+        ],
+        "pk": false
+      },
+      {
+        "name": "claimed_amount",
+        "type": "DECIMAL(12,2)",
+        "desc": "EUR",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "approved_amount",
+        "type": "DECIMAL(12,2)",
+        "desc": "EUR, NULL until decided",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [
+          "EUR",
+          "NULL"
+        ],
+        "pk": false
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR(1000)",
+        "desc": "the agent's summary",
+        "ref": null,
+        "pii": "free-text",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "resolution_note",
+        "type": "VARCHAR(400)",
+        "desc": "",
+        "ref": null,
+        "pii": "free-text",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      }
+    ]
+  },
+  "bulk_change": {
+    "entity": "products",
+    "grid_columns": [
+      "sku",
+      "name",
+      "supplier_id",
+      "category_id",
+      "active"
+    ],
+    "current_value": {
+      "view": "product_current_prices",
+      "key": "product_id",
+      "column": "list_price"
+    },
+    "change": {
+      "table": "price_history",
+      "key": "product_id",
+      "value": "list_price",
+      "valid_from": "valid_from",
+      "valid_to": "valid_to",
+      "fixed": {
+        "reason": "Supplier increase",
+        "currency": "EUR"
+      }
+    },
+    "example": "raise prices 4% on everything from Skarvind AS from the first of next month, except products already on promotion",
+    "grid_field_info": [
+      {
+        "name": "sku",
+        "type": "VARCHAR(20)",
+        "desc": "e.g. 'FJV-TNT-0010' (supplier code, category code, sequence)",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(200)",
+        "desc": "full display name: brand + model + type + variant + colour",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      },
+      {
+        "name": "supplier_id",
+        "type": "INT",
+        "desc": "-> suppliers.id",
+        "ref": "suppliers.id",
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      },
+      {
+        "name": "category_id",
+        "type": "INT",
+        "desc": "-> categories.id",
+        "ref": "categories.id",
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      },
+      {
+        "name": "active",
+        "type": "BOOLEAN",
+        "desc": "FALSE = discontinued",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": []
+      }
+    ],
+    "change_columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": true
+      },
+      {
+        "name": "product_id",
+        "type": "INT",
+        "desc": "-> products.id",
+        "ref": "products.id",
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "list_price",
+        "type": "DECIMAL(10,2)",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "currency",
+        "type": "CHAR(3)",
+        "desc": "always EUR",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "valid_from",
+        "type": "DATE",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "valid_to",
+        "type": "DATE",
+        "desc": "NULL on the open-ended row",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "reason",
+        "type": "VARCHAR(80)",
+        "desc": "'Initial listing', 'Annual price update', 'Supplier increase', ...",
+        "ref": null,
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "created_by",
+        "type": "INT",
+        "desc": "-> staff.id (users)",
+        "ref": "users.id",
+        "pii": "none",
+        "not_null": false,
+        "vocabulary": [],
+        "pk": false
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "desc": "",
+        "ref": null,
+        "pii": "none",
+        "not_null": true,
+        "vocabulary": [],
+        "pk": false
+      }
+    ]
+  },
+  "pack": "nordic_supply",
+  "company": "Nordic Supply",
+  "exposed_tables": [
+    "warehouses",
+    "categories",
+    "suppliers",
+    "products",
+    "price_history",
+    "promotions",
+    "inventory",
+    "customers",
+    "delivery_addresses",
+    "orders",
+    "order_lines",
+    "shipments",
+    "shipment_lines",
+    "delivery_events",
+    "claims",
+    "claim_lines",
+    "return_authorisations",
+    "return_lines",
+    "credit_notes",
+    "stock_movements"
+  ],
+  "views": [
+    "product_current_prices",
+    "late_shipments",
+    "open_claims",
+    "staff"
+  ]
+}
