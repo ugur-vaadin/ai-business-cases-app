@@ -1,6 +1,6 @@
 /*
  * The application shell: the rail, the page heading and its watermark, and the split pages (a main column with a
- * full-height panel beside it) that Insights, Claims and Bulk change share.
+ * full-height panel beside it) that Claims and Bulk change share.
  */
 /* ---- shared text roles ---- */
 .intro {
@@ -40,7 +40,7 @@ vaadin-app-layout::part(drawer) {
   width: 230px;
 }
 vaadin-app-layout::part(content) {
-  padding: 0;   /* views bring their own padding; Insights' sidebar runs edge to edge */
+  padding: 0;   /* views bring their own padding; the split pages run their panel edge to edge */
 }
 .app-rail {
   height: 100%;
@@ -98,7 +98,7 @@ vaadin-app-layout::part(content) {
   z-index: 1;
 }
 
-/* ---- split pages (Insights, Claims, Bulk change): main column + full-height panel ---- */
+/* ---- split pages (Claims, Bulk change): main column + full-height panel ---- */
 .watermark {
   position: absolute;
   top: -0.32em;

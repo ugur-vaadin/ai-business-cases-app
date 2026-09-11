@@ -19,3 +19,6 @@ DATA-LAYER.md
 DECISIONS.md
 TEST-CASES.md
 scripts/
+
+# Local tool configuration
+.claude/

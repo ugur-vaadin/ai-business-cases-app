@@ -32,6 +32,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.progressbar.ProgressBar;
+import com.vaadin.flow.component.shared.Tooltip;
 import com.vaadin.flow.function.SerializableConsumer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -45,8 +46,8 @@ import com.vaadin.demo.nordicsupply.session.CurrentUser;
 import com.vaadin.demo.nordicsupply.util.Errors;
 
 /**
- * One Insights widget: a grid or a chart with its own chat and orchestrator. The chat lives in the view's sidebar
- * while the widget is selected. After every turn the model names the widget (a short title and a one-sentence
+ * One Insights widget: a grid or a chart with its own chat and orchestrator. The chat is shown in a popover
+ * beside the widget while it is selected. After every turn the model names the widget (a short title and a one-sentence
  * description in business terms); the widget knows its persistable state (the SQL, and for charts the
  * configuration) so the dashboard can be saved. The model sees the schema text and today's date and never a row.
  */
@@ -188,9 +189,8 @@ public class InsightWidget extends DashboardWidget {
                 .withAssistantName(TurnLogger.ASSISTANT_NAME)
                 .build();
 
-        description.addClassName("widget-description");
-        description.setVisible(false);
-        note.addClassName("note");
+        // the description and the restore note are not shown in the widget (the screens have the title only);
+        // the view shows them at the top of the widget's chat popover, and the description is the tooltip
         edit.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         edit.setTooltipText("Rename or describe this widget");
         edit.setAriaLabel("Edit widget");
@@ -205,7 +205,8 @@ public class InsightWidget extends DashboardWidget {
         progress.addClassName("widget-progress");
         thinking.addClassName("thinking");
         thinking.setVisible(false);
-        var content = new VerticalLayout(description, note, progress, visual);
+        var content = new VerticalLayout(progress, visual);
+        content.addClassName("widget-body"); // the view treats a click here as "open this widget's chat"
         content.setSizeFull();
         content.setPadding(false);
         content.setSpacing(false);
@@ -218,7 +219,7 @@ public class InsightWidget extends DashboardWidget {
         selectedMark.setVisible(selected);
     }
 
-    /** "Thinking…", shown in the sidebar chat while a turn runs; owned by the widget so it follows its chat. */
+    /** "Thinking…", shown under the chat while a turn runs; owned by the widget so it follows its chat. */
     public Span thinkingIndicator() {
         return thinking;
     }
@@ -227,7 +228,7 @@ public class InsightWidget extends DashboardWidget {
         return type;
     }
 
-    /** The widget's chat; the view shows it in the sidebar while the widget is selected. */
+    /** The widget's chat; the view shows it in a popover while the widget is selected. */
     public ChatPanel chat() {
         return chat;
     }
@@ -244,9 +245,14 @@ public class InsightWidget extends DashboardWidget {
         return description.getText();
     }
 
+    /** A note about the widget's state, e.g. that a chart was restored with a default look; empty when none. */
+    public String note() {
+        return note.getText();
+    }
+
     public void setDescription(String text) {
         description.setText(text == null ? "" : text);
-        description.setVisible(text != null && !text.isBlank());
+        Tooltip.forComponent(this).setText(text == null || text.isBlank() ? null : text);
     }
 
     public void onEdit(SerializableConsumer<InsightWidget> handler) {

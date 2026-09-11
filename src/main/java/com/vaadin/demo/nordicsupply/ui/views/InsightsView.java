@@ -1,7 +1,6 @@
 package com.vaadin.demo.nordicsupply.ui.views;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -16,6 +15,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.popover.Popover;
+import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,22 +39,33 @@ import com.vaadin.demo.nordicsupply.ui.components.ReadmePopup;
 import com.vaadin.demo.nordicsupply.ui.components.WidgetEditDialog;
 
 /**
- * The self-service dashboard ("Insights"). An empty dashboard shows one prompt in the middle of the page; a
- * question adds a grid or chart widget and selects it, which opens its chat in the right-hand sidebar. When nothing
- * is selected the sidebar offers a new query. The sidebar can be hidden to give the dashboard the full width; the
- * prompt then stays as a sticky footer, and selecting a widget brings the panel back. Widgets can be renamed,
- * moved, resized and removed; "Save Dashboard" keeps what is on screen (inserting, updating and deleting rows to
- * match). Dashboards are personal.
+ * The self-service dashboard ("Insights"). An empty dashboard shows one prompt in the middle of the page. A question
+ * adds a grid or chart widget and opens its chat in a popover beside it; clicking any widget does the same. The last
+ * tile of the dashboard is "New Query": clicking it opens the prompt in the same popover, so a new question is always
+ * one click away. The popover closes with Escape or its own close button. Widgets can be renamed, moved, resized and
+ * removed; "Save Dashboard" keeps what is on screen (inserting, updating and deleting rows to match). Dashboards are
+ * personal.
+ * <p>
+ * The dashboard's own selection (the state its move, resize and remove controls need) follows keyboard focus and is
+ * cleared as soon as focus leaves the widget, which it does when the user types into the chat. The view therefore
+ * keeps its own notion of the <em>active</em> widget, set by a click, and never reads the dashboard's selection.
  */
 @Route(value = "insights", layout = MainLayout.class)
 @PageTitle("Insights")
 public class InsightsView extends VerticalLayout implements HasReadme {
 
-    /** Narrower than this and a chart's axis labels collide. */
+    /** Narrower than this and a chart's axis labels collide; three columns fit from about 1100px. */
     private static final String MIN_COLUMN_WIDTH = "260px";
 
-    /** Tall enough for a chart plus its title, so a one-by-one widget is readable. */
-    private static final String ROW_HEIGHT = "360px";
+    /** The widgets' proportions as designed: about 4:3 at three columns on a 1440px screen. */
+    private static final String ROW_HEIGHT = "300px";
+
+    private static final String GAP = "1rem";
+
+    /** The popover beside a widget: as wide as a one-column widget, and tall enough for a few turns of chat. */
+    private static final String POPOVER_WIDTH = "400px";
+
+    private static final String POPOVER_HEIGHT = "500px";
 
     static final Readme README = new Readme(
             "Insights",
@@ -63,9 +75,9 @@ public class InsightsView extends VerticalLayout implements HasReadme {
 
             You are an analyst on the **Nordic Supply** order desk. Type a question about orders, shipments, claims or
             products, choose a table or a chart, and press the arrow. The answer appears as a widget on your dashboard,
-            named and described by the assistant in business terms. Select a widget and its chat opens on the right,
+            named and described by the assistant in business terms. Select a widget and its chat opens beside it,
             so you can refine it: "group it by week", "only the Göteborg warehouse", "add the customer". A table stays a
-            table and a chart stays a chart; the New Query box makes the other kind.
+            table and a chart stays a chart; the **New Query** tile at the end of the dashboard makes the other kind.
 
             ## Things to try
 
@@ -90,11 +102,34 @@ public class InsightsView extends VerticalLayout implements HasReadme {
 
             Most questions are asked once. Widgets you keep on screen, with their size and order, are stored when you
             press **Save Dashboard**; the pencil on a widget renames or describes it. Saved widgets come back with the
-            same query the next time you open Insights. The panel on the right can be hidden to give the dashboard the
-            full width; the question box then stays at the bottom. Every question and every decision is recorded in the
-            Activity log.
+            same query the next time you open Insights. Every question and every decision is recorded in the Activity
+            log.
             """);
     private static final int CHIPS_SHOWN = 3;
+
+    /**
+     * Client-side test for a click that should open the widget's chat: one on the widget's title row, its body (the
+     * chart or the grid's rows) or the dashboard's select overlay, but never one that a control handles itself: the
+     * pencil, the dashboard's move, resize and remove buttons and their apply controls, a grid header (sorting), or a
+     * column resize handle.
+     */
+    private static final String CLICK_OPENS_CHAT =
+            """
+            (() => {
+                const path = event.composedPath();
+                const part = el => (el.getAttribute && el.getAttribute('part')) || '';
+                const onControl = path.some(el => el.localName === 'vaadin-button'
+                        || el.localName === 'vaadin-dashboard-button'
+                        || el.localName === 'vaadin-grid-sorter'
+                        || /header-cell|resize/.test(part(el)));
+                if (onControl) {
+                    return false;
+                }
+                return path.some(el => el.id === 'focus-button'
+                        || (el.classList && el.classList.contains('widget-body'))
+                        || part(el).split(' ').includes('title')
+                        || part(el).split(' ').includes('header'));
+            })()""";
 
     private final PackData pack;
     private final JdbcTemplate aiJdbc;
@@ -107,15 +142,13 @@ public class InsightsView extends VerticalLayout implements HasReadme {
     private final Dashboard dashboard = new Dashboard();
     private final QueryPanel query;
     private final Button saveDashboard = new Button("Save Dashboard", e -> saveDashboard());
-    private final Button panelToggle = new Button(VaadinIcon.CHEVRON_RIGHT.create(), e -> togglePanel());
     private final Div empty = new Div();
     private final Div scroller = new Div(dashboard);
-    private final Div footer = new Div();
-    private final Div main = new Div(scroller, footer);
-    private final Div sidebar = new Div();
+    private final DashboardWidget newQuery = new DashboardWidget();
+    private final Popover popover = new Popover();
     private final Set<Integer> storedIds = new HashSet<>();
-    private InsightWidget selected;
-    private boolean panelHidden;
+    private DashboardWidget active;
+    private boolean dirty;
 
     public InsightsView(
             PackData pack,
@@ -139,8 +172,7 @@ public class InsightsView extends VerticalLayout implements HasReadme {
 
         var heading = new PageHeading("Insights", "Understand your operations");
         var spacer = new Div();
-        panelToggle.addThemeVariants(ButtonVariant.TERTIARY);
-        var header = new HorizontalLayout(heading, spacer, saveDashboard, panelToggle);
+        var header = new HorizontalLayout(heading, spacer, saveDashboard);
         header.addClassName("insights-header");
         header.setWidthFull();
         header.setAlignItems(Alignment.START);
@@ -152,39 +184,65 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         dashboard.addClassName("insights-dashboard");
         dashboard.setWidthFull();
         dashboard.setEditable(true);
-        dashboard.setMaximumColumnCount(2);
+        dashboard.setMaximumColumnCount(3); // three tiles across, as designed; the popover is about one tile wide
         dashboard.setMinimumColumnWidth(MIN_COLUMN_WIDTH);
         dashboard.setRowHeight(ROW_HEIGHT);
-        dashboard.addItemSelectedChangedListener(e -> {
-            if (e.getItem() instanceof InsightWidget w) {
-                if (e.isSelected()) {
-                    select(w);
-                } else if (w == selected) {
-                    select(null);
-                }
-            }
-        });
+        dashboard.setGap(GAP);
         dashboard.setItemRemoveHandler(e -> {
             if (e.getItem() instanceof InsightWidget w) {
                 remove(w);
             }
         });
-        dashboard.addItemMovedListener(e -> markDirty());
+        dashboard.addItemMovedListener(e -> {
+            markDirty();
+            keepNewQueryLast();
+        });
         dashboard.addItemResizedListener(e -> markDirty());
 
-        empty.addClassName("insights-empty");
-        scroller.addClassName("page-scroll");
-        footer.addClassName("insights-footer");
-        main.addClassName("insights-main");
-        sidebar.addClassName("page-panel");
-        // the sidebar is a full-height column of its own; the heading and the dashboard share the left column
-        var left = new Div(header, empty, main);
-        left.addClassName("page-main");
-        var split = new Div(left, sidebar);
-        split.addClassName("page-split");
+        var newQueryButton = new Button("New Query", VaadinIcon.PLUS.create());
+        newQueryButton.addClassName("new-query-button");
+        newQuery.setContent(newQueryButton);
+        newQuery.addClassName("new-query-widget");
+        newQuery.getElement().addEventListener("click", e -> activate(newQuery));
+        // the dashboard has no per-widget switch for moving; the tile stays put by refusing the drag and the arrow
+        // keys before the widget's own handlers see them (its header, with the move button, is hidden by CSS)
+        newQuery.getElement()
+                .executeJs(
+                        """
+                        this.addEventListener('dragstart', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true);
+                        this.addEventListener('keydown', e => {
+                            if (e.key.startsWith('Arrow') || e.key === 'Backspace' || e.key === 'Delete') {
+                                e.stopImmediatePropagation();
+                            }
+                        }, true);
+                        """);
 
-        add(split, new ReadmePopup(README, pack.declaration().company()));
-        expand(split);
+        popover.setOpenOnClick(false);
+        popover.setModal(false);
+        popover.setCloseOnOutsideClick(false);
+        popover.setPosition(PopoverPosition.END_TOP);
+        popover.setWidth(POPOVER_WIDTH);
+        popover.setHeight(POPOVER_HEIGHT);
+        popover.setAutofocus(true);
+        popover.getElement().getClassList().add("insight-popover");
+        popover.addOpenedChangeListener(e -> {
+            if (!e.isOpened()) {
+                setActive(null); // Escape on the client, or a close from the view: either way nothing is active
+            }
+        });
+
+        empty.addClassName("insights-empty");
+        empty.setWidthFull();
+        scroller.addClassName("page-scroll");
+        scroller.setWidthFull(); // a vertical layout gives its children their own width unless told otherwise
+
+        add(
+                header,
+                empty,
+                scroller,
+                popover,
+                new ReadmePopup(README, pack.declaration().company()));
+        expand(scroller);
         loadSaved();
         layout();
     }
@@ -207,101 +265,111 @@ public class InsightsView extends VerticalLayout implements HasReadme {
     }
 
     /**
-     * Empty: the prompt in the middle, nothing else. With widgets: the dashboard, and either the sidebar (the selected
-     * widget's chat, or "New Query") or, when the panel is hidden, the prompt as a sticky footer.
+     * Empty: the prompt in the middle, nothing else. With widgets: the dashboard, ending with the New Query tile. Save
+     * Dashboard shows while there is something to save: any widget, or the removal of the last one.
      */
     private void layout() {
-        boolean hasWidgets = !dashboard.getWidgets().isEmpty();
+        boolean hasWidgets = dashboard.getWidgets().stream().anyMatch(InsightWidget.class::isInstance);
         empty.setVisible(!hasWidgets);
-        main.setVisible(hasWidgets);
-        saveDashboard.setVisible(hasWidgets);
-        panelToggle.setVisible(hasWidgets);
-        sidebar.removeAll();
-        footer.removeAll();
+        scroller.setVisible(hasWidgets);
+        saveDashboard.setVisible(hasWidgets || dirty);
         if (!hasWidgets) {
-            sidebar.setVisible(false);
-            footer.setVisible(false);
+            popover.close();
+            dashboard.remove(newQuery);
             query.setMode(QueryPanel.Mode.CENTER);
             empty.removeAll();
             empty.add(query);
+        } else if (!dashboard.getWidgets().contains(newQuery)) {
+            dashboard.add(newQuery);
+        }
+    }
+
+    /** The New Query tile is always the last one; a move that put it elsewhere is undone. */
+    private void keepNewQueryLast() {
+        var widgets = dashboard.getWidgets();
+        if (widgets.contains(newQuery) && widgets.getLast() != newQuery) {
+            dashboard.remove(newQuery);
+            dashboard.add(newQuery);
+        }
+    }
+
+    /** Opens the popover beside the given tile: the widget's chat, or the prompt for the New Query tile. */
+    private void activate(DashboardWidget tile) {
+        if (tile == active && popover.isOpened()) {
             return;
         }
-        boolean showSidebar = !panelHidden || selected != null;
-        sidebar.setVisible(showSidebar);
-        footer.setVisible(!showSidebar);
-        panelToggle.setIcon((showSidebar ? VaadinIcon.CHEVRON_RIGHT : VaadinIcon.CHEVRON_LEFT).create());
-        panelToggle.setTooltipText(showSidebar ? "Hide the panel" : "Show the panel");
-        panelToggle.setAriaLabel(showSidebar ? "Hide the panel" : "Show the panel");
-        if (!showSidebar) {
-            query.setMode(QueryPanel.Mode.FOOTER);
-            footer.add(query);
-        } else if (selected != null) {
-            sidebar.add(chatBox(selected));
+        setActive(tile);
+        Div content;
+        if (tile instanceof InsightWidget widget) {
+            var footnote = new Span(QueryPanel.FOOTNOTE);
+            footnote.addClassName("footnote");
+            content = new Div();
+            // the widget itself shows only its title; what it contains, in business terms, is said here
+            var intro = new Span(chatIntro(widget));
+            intro.addClassName("chat-intro");
+            content.add(intro, widget.chat(), widget.thinkingIndicator(), footnote);
+            content.addClassName("popover-chat");
         } else {
-            query.setMode(QueryPanel.Mode.SIDEBAR);
-            sidebar.add(query);
+            query.setMode(QueryPanel.Mode.POPOVER);
+            content = query;
         }
-    }
-
-    private Div chatBox(InsightWidget widget) {
-        var title = new Span(widget.getTitle());
-        title.addClassName("chat-title");
-        var close = new Button(VaadinIcon.CLOSE.create(), e -> select(null));
+        var close = new Button(VaadinIcon.CLOSE.create(), e -> popover.close());
         close.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
-        close.setAriaLabel("Close chat");
-        var header = new Div(title, close);
-        header.addClassName("chat-header");
-        var suggestions = new Div();
-        suggestions.addClassName("suggestions");
-        for (var s : List.of("Group the days by week", "Add the customer", "Which data is this based on?")) {
-            var b = new Button(s, e -> widget.ask(s));
-            b.addThemeVariants(ButtonVariant.SMALL);
-            suggestions.add(b);
+        close.addClassName("popover-close");
+        close.setAriaLabel("Close");
+        popover.removeAll();
+        popover.add(close, content);
+        if (popover.getTarget() != tile) {
+            popover.setTarget(tile);
         }
-        var footnote = new Span(QueryPanel.FOOTNOTE);
-        footnote.addClassName("footnote");
-        var box = new Div(header, widget.chat(), widget.thinkingIndicator(), suggestions, footnote);
-        box.addClassName("sidebar-chat");
-        return box;
+        popover.open();
     }
 
-    /** Selection is the dashboard's own (client-side) state; keep it in step when the view selects or deselects. */
-    private void select(InsightWidget widget) {
-        if (selected != null && selected != widget) {
-            deselect();
+    /** The model's description of the widget, a restore note if there is one, or a hint when the chat is still empty. */
+    private static String chatIntro(InsightWidget widget) {
+        var parts = new StringBuilder();
+        if (!widget.description().isBlank()) {
+            parts.append(widget.description());
         }
-        if (widget != null) {
-            widget.getElement().executeJs("this.__selected = true");
-            widget.setSelectedMark(true);
-            panelHidden = false; // a selected widget always shows its chat
+        if (!widget.note().isBlank()) {
+            parts.append(parts.isEmpty() ? "" : " ").append(widget.note());
         }
-        selected = widget;
-        layout();
+        if (parts.isEmpty() && widget.chat().messageList().getItems().isEmpty()) {
+            parts.append("Ask this widget to refine itself: group it differently, add a column, narrow the period, "
+                    + "or ask which data it is based on.");
+        }
+        return parts.toString();
     }
 
-    /** Clears the selection: the widget's mark, the CSS flag its chat is shown by, and the field. */
-    private void deselect() {
-        if (selected != null) {
-            selected.getElement().executeJs("this.__selected = false");
-            selected.setSelectedMark(false);
-            selected = null;
+    /** Marks the active tile (gold outline, check on a widget) and clears the previous one. */
+    private void setActive(DashboardWidget tile) {
+        if (active != null && active != tile) {
+            active.removeClassName("active");
+            if (active instanceof InsightWidget w) {
+                w.setSelectedMark(false);
+            }
+        }
+        active = tile;
+        if (tile != null) {
+            tile.addClassName("active");
+            if (tile instanceof InsightWidget w) {
+                w.setSelectedMark(true);
+            }
         }
     }
 
-    private void togglePanel() {
-        panelHidden = !panelHidden;
-        if (panelHidden && selected != null) {
-            deselect();
-        }
-        layout();
-    }
-
-    /** A question adds a widget titled with the question, selects it, and asks it there. */
+    /** A question adds a widget before the New Query tile, selects it, and asks it there. */
     private void ask(String question, InsightWidget.Type type) {
         var widget = newWidget(type, question);
-        dashboard.add(widget);
+        int index = dashboard.getWidgets().indexOf(newQuery);
+        if (index < 0) {
+            dashboard.add(widget);
+        } else {
+            dashboard.addWidgetAtIndex(index, widget);
+        }
         markDirty();
-        select(widget);
+        layout();
+        activate(widget);
         widget.ask(question);
     }
 
@@ -309,28 +377,24 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         var widget =
                 new InsightWidget(type, title, new JdbcDatabaseProvider(aiJdbc, pack), providers, log, user, model);
         widget.onEdit(this::editDialog);
-        widget.onChanged(w -> {
-            markDirty();
-            if (w == selected) {
-                layout(); // the sidebar header shows the new title
-            }
-        });
+        widget.onChanged(w -> markDirty());
+        widget.getElement()
+                .addEventListener("click", e -> {
+                    if (e.getEventData().path(CLICK_OPENS_CHAT).asBoolean(false)) {
+                        activate(widget);
+                    }
+                })
+                .addEventData(CLICK_OPENS_CHAT);
         return widget;
     }
 
     private void editDialog(InsightWidget widget) {
-        new WidgetEditDialog(widget, () -> {
-                    markDirty();
-                    if (widget == selected) {
-                        layout();
-                    }
-                })
-                .open();
+        new WidgetEditDialog(widget, this::markDirty).open();
     }
 
     private void remove(InsightWidget widget) {
-        if (widget == selected) {
-            deselect();
+        if (widget == active) {
+            popover.close();
         }
         dashboard.remove(widget);
         markDirty();
@@ -384,7 +448,9 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         }
         storedIds.clear();
         storedIds.addAll(kept);
+        dirty = false;
         saveDashboard.setEnabled(false);
+        layout();
         Notification.show(
                 skipped == 0
                         ? "Dashboard saved"
@@ -392,6 +458,8 @@ public class InsightsView extends VerticalLayout implements HasReadme {
     }
 
     private void markDirty() {
+        dirty = true;
         saveDashboard.setEnabled(true);
+        saveDashboard.setVisible(true);
     }
 }

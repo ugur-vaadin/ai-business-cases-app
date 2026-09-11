@@ -10,7 +10,7 @@ customers, orders, products and shipments, months of history) ships with the app
 | Home | `/` | Live numbers from the order desk; the front door |
 | Orders, Customers, Products | `/orders`, `/customers`, `/products` | Ordinary read-only lists with search, so the app looks like the application a client runs |
 | Claims | `/claims` | Message to claim: the form on the left, the customer message and its chat in the right-hand panel; the model fills the form through live lookups and the form's own validation decides what is accepted |
-| Insights | `/insights` | The self-service dashboard: a question becomes a grid or chart widget; the selected widget's chat opens in the sidebar (which can be hidden, leaving the prompt as a footer); Save Dashboard keeps what is on screen, sizes and order included |
+| Insights | `/insights` | The self-service dashboard: a question becomes a grid or chart widget; clicking a widget opens its chat in a popover beside it, and the New Query tile at the end of the dashboard opens the prompt the same way; Save Dashboard keeps what is on screen, sizes and order included |
 | Activity log | `/activity` | Who asked what, what the model could see, what it answered, what a person decided |
 | Bulk change | `/bulk` (unlisted) | Supervised bulk price change: the model proposes a change per row, a person reviews and applies, and the batch can be undone |
 
@@ -60,7 +60,7 @@ declaration, and the numbers behind the Home tiles. No test calls the model.
 | | |
 |---|---|
 | `ui/MainLayout` | the rail: wordmark, views, Activity log, Help, user switcher |
-| `ui/views/InsightsView`, `ui/components/InsightWidget`, `ui/components/QueryPanel` | Insights: the prompt panel, the dashboard, the sidebar; one widget = one controller, one chat, one orchestrator |
+| `ui/views/InsightsView`, `ui/components/InsightWidget`, `ui/components/QueryPanel` | Insights: the prompt panel, the dashboard with its New Query tile, the popover; one widget = one controller, one chat, one orchestrator |
 | `ui/views/HomeView`, `ui/views/OrdersView`, `ui/views/CustomersView`, `ui/views/ProductsView`, `ui/components/DataTable` | the back-office views and the lazy, searchable grid they share |
 | `ui/views/ClaimsView`, `data/ClaimService` | case 2: the claim form on a `BeanValidationBinder<Claim>`, and the write behind Save |
 | `ui/views/BulkChangeView`, `data/PriceChangeService` | case 3: the catalogue, the reviewed proposals, the dated price rows and the undo |

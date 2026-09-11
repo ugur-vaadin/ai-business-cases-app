@@ -16,30 +16,27 @@ import com.vaadin.flow.component.textfield.TextField;
 
 /**
  * The "ask a question" panel of Insights: a prompt bar with a type selector and an arrow, suggested questions, and
- * the privacy footnote. It sits in the middle of an empty dashboard, moves to the sidebar as "New Query" once
- * widgets exist, and becomes a sticky footer under the dashboard when the sidebar is hidden.
+ * the privacy footnote. It sits in the middle of an empty dashboard and, once widgets exist, in the popover beside
+ * the "New Query" tile.
  */
 public class QueryPanel extends Div {
 
     /** What the panel promises about the data: the model is shown the schema, never the rows. */
     public static final String FOOTNOTE = "Schema-only queries · No data leaves your network";
 
-    /** Where the panel sits; each place shows a different amount of it. */
+    /** Where the panel sits; the popover has less room, so it shows the short labels. */
     public enum Mode {
         CENTER,
-        SIDEBAR,
-        FOOTER
+        POPOVER
     }
 
     private final TextField question = new TextField();
     private final Select<InsightWidget.Type> type = new Select<>();
-    private final Span title = new Span("New Query");
     private final FlexLayout tryChips = new FlexLayout(new Span("Try:"));
     private final Span footnote = new Span(FOOTNOTE);
 
     public QueryPanel(List<String> chips, BiConsumer<String, InsightWidget.Type> onAsk) {
         addClassName("query-panel");
-        title.addClassName("query-title");
 
         question.setClearButtonVisible(true);
         question.setWidthFull();
@@ -65,14 +62,12 @@ public class QueryPanel extends Div {
             tryChips.add(b);
         }
         footnote.addClassName("footnote");
-        add(title, bar, tryChips, footnote);
+        add(bar, tryChips, footnote);
         setMode(Mode.CENTER);
     }
 
     public void setMode(Mode mode) {
         getElement().setAttribute("mode", mode.name().toLowerCase());
-        title.setVisible(mode == Mode.SIDEBAR);
-        tryChips.setVisible(mode != Mode.FOOTER);
         boolean full = mode == Mode.CENTER;
         question.setPlaceholder(full ? "Ask about orders, shipments, claims, products" : "Ask about live operations");
         type.setItemLabelGenerator(full ? InsightWidget.Type::action : InsightWidget.Type::shortLabel);
