@@ -209,20 +209,20 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         newQueryBox.addClassName("new-query-box");
         newQuery.setContent(newQueryBox);
         newQuery.addClassName("new-query-widget");
-        // the dashboard has no per-widget switch for editing, so the tile opts out itself: it refuses the drag and,
-        // when the tile itself has focus, the arrow keys before the widget's own handlers see them (its header, with
-        // the move button, is hidden by CSS), and it lets clicks through the invisible cover an editable widget puts
-        // over its content to select itself, so a click on the prompt focuses the prompt. Keys typed into the prompt
-        // pass through untouched.
+        // The dashboard is editable at all times and has no per-widget switch, so the tile opts out itself. Its
+        // header, with the move and remove buttons, is hidden by CSS. The drag is refused here, before the dashboard
+        // sees it. A move by keyboard is undone by keepNewQueryLast and a keyboard remove is ignored by the remove
+        // handler, so neither needs blocking.
+        newQuery.getElement()
+                .addEventListener("dragstart", e -> {})
+                .preventDefault()
+                .stopPropagation();
+        // An editable widget puts an invisible cover over its content that selects the widget on click. It lives in
+        // the widget's shadow root without a part, so no Flow or CSS API reaches it; this is the one place the view
+        // runs a script. With clicks passing through, a click on the prompt focuses the prompt.
         newQuery.getElement()
                 .executeJs(
                         """
-                        this.addEventListener('dragstart', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true);
-                        this.addEventListener('keydown', e => {
-                            if (e.target === this && (e.key.startsWith('Arrow') || e.key === 'Backspace' || e.key === 'Delete')) {
-                                e.stopImmediatePropagation();
-                            }
-                        }, true);
                         this.updateComplete.then(() => {
                             this.shadowRoot.getElementById('focus-button-wrapper').style.pointerEvents = 'none';
                         });
