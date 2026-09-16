@@ -209,9 +209,11 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         newQueryBox.addClassName("new-query-box");
         newQuery.setContent(newQueryBox);
         newQuery.addClassName("new-query-widget");
-        // the dashboard has no per-widget switch for moving; the tile stays put by refusing the drag and, when the
-        // tile itself has focus, the arrow keys before the widget's own handlers see them (its header, with the move
-        // button, is hidden by CSS). Keys typed into the prompt inside the tile pass through untouched.
+        // the dashboard has no per-widget switch for editing, so the tile opts out itself: it refuses the drag and,
+        // when the tile itself has focus, the arrow keys before the widget's own handlers see them (its header, with
+        // the move button, is hidden by CSS), and it lets clicks through the invisible cover an editable widget puts
+        // over its content to select itself, so a click on the prompt focuses the prompt. Keys typed into the prompt
+        // pass through untouched.
         newQuery.getElement()
                 .executeJs(
                         """
@@ -221,6 +223,9 @@ public class InsightsView extends VerticalLayout implements HasReadme {
                                 e.stopImmediatePropagation();
                             }
                         }, true);
+                        this.updateComplete.then(() => {
+                            this.shadowRoot.getElementById('focus-button-wrapper').style.pointerEvents = 'none';
+                        });
                         """);
 
         popover.setOpenOnClick(false);
