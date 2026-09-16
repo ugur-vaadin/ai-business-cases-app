@@ -3,6 +3,8 @@ package com.vaadin.demo.nordicsupply.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Optional;
+
 import com.vaadin.flow.component.ai.provider.ToolException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,7 +27,7 @@ class JdbcDatabaseProviderTest {
         var jdbc = new JdbcTemplate(db);
         jdbc.execute("CREATE TABLE widgets (id INT PRIMARY KEY, name VARCHAR(20))");
         jdbc.update("INSERT INTO widgets (id, name) VALUES (1, 'one')");
-        provider = new JdbcDatabaseProvider(jdbc, new PackData("nordic_supply"));
+        provider = new JdbcDatabaseProvider(() -> jdbc, Optional::empty, new PackData("nordic_supply"));
     }
 
     @Test
@@ -49,5 +51,19 @@ class JdbcDatabaseProviderTest {
     @Test
     void stripsTrailingSemicolons() {
         assertThat(provider.executeQuery("SELECT name FROM widgets;;")).hasSize(1);
+    }
+
+    @Test
+    void deniesFileFunctions() {
+        assertThatThrownBy(() -> provider.executeQuery("SELECT * FROM CSVREAD('x.csv')"))
+                .isInstanceOf(ToolException.class)
+                .hasMessageContaining("CSVREAD");
+    }
+
+    @Test
+    void deniesScriptFunctions() {
+        assertThatThrownBy(() -> provider.executeQuery("SELECT RUNSCRIPT FROM ('x.sql')"))
+                .isInstanceOf(ToolException.class)
+                .hasMessageContaining("RUNSCRIPT");
     }
 }

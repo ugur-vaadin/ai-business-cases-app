@@ -10,7 +10,7 @@ customers, orders, products and shipments, months of history) ships with the app
 | Home | `/` | Live numbers from the order desk; the front door |
 | Orders, Customers, Products | `/orders`, `/customers`, `/products` | Ordinary read-only lists with search, so the app looks like the application a client runs |
 | Claims | `/claims` | Message to claim: the form on the left, the customer message and its chat in the right-hand panel; the model fills the form through live lookups and the form's own validation decides what is accepted |
-| Insights | `/insights` | The self-service dashboard: a question becomes a grid or chart widget; clicking a widget opens its chat in a popover beside it, and the New Query tile at the end of the dashboard opens the prompt the same way; Save Dashboard keeps what is on screen, sizes and order included |
+| Insights | `/insights` | The self-service dashboard: a question becomes a grid or chart widget; the chat icon in a widget's header opens its chat in a popover beside it, and the New Query tile at the end of the dashboard holds the prompt for the next question; Save Dashboard keeps what is on screen, sizes and order included |
 | Activity log | `/activity` | Who asked what, what the model could see, what it answered, what a person decided |
 | Bulk change | `/bulk` (unlisted) | Supervised bulk price change: the model proposes a change per row, a person reviews and applies, and the batch can be undone |
 
@@ -77,14 +77,20 @@ declaration, and the numbers behind the Home tiles. No test calls the model.
 
 ## What the model sees
 
-* The dashboard sends the schema text and today's date, never a row; queries run on the read-only account.
+* The dashboard sends the schema text and today's date, never a row; queries run on a read-only account.
+* Which rows a query can return is decided by the database. Each of the four demo users has a region, and the model's
+  queries run on the read-only account of that region, which may read only views filtered by its countries. The model
+  is never told the region, the schema of the views or the membership table; the schema text is the same for everyone.
+* The country filter above the dashboard narrows further within the region, through a session variable the same views
+  honour. A filter outside the region returns nothing.
 * The claim form sends the customer's message and the visible field values.
 * Employees are visible to the model by name and role only, through the `staff` view.
 * Every AI turn and every decision lands in `activity_log`, with the model name and the token counts.
 
 ## Known simplifications
 
-* No real login: the user is chosen at the bottom of the rail from the pack's staff; saved widgets and log rows belong to it.
+* No real login: the user is chosen at the bottom of the rail from the four demo employees, each with a region (head office, Finland and Estonia, Sweden and Norway, Denmark and Germany); saved widgets and log rows belong to the chosen one. In an application with real accounts, `CurrentUser.scope()` reads the roles of the authenticated user instead of the `scope_assignment` table.
+* The regional boundary is a schema of filtered views and one read-only database account per region (`V3__scoped_views.sql`), which is how row-level security is written in H2; in PostgreSQL the same design is a row-level security policy on the base tables. The account passwords are generated at start-up and kept in memory, so no usable credential is in the sources.
 * Widgets are stored only when Save Dashboard is pressed; a saved chart that was stored without a configuration restores with a default column look.
 * The claim form works from the message text; the photo attachment is not wired to the chat's upload.
 * The bulk change writes dated price rows (reason "Supplier increase", currency EUR); undo covers the last batch of the session.

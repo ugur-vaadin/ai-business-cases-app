@@ -269,6 +269,7 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
         var preview = new TextArea("Message");
         preview.setWidthFull();
         preview.setMinHeight("180px");
+        preview.addClassName("message-preview"); // a long message scrolls inside; the chat under it keeps its place
         preview.setReadOnly(true);
         docs.addValueChangeListener(e -> preview.setValue(e.getValue() == null ? "" : text(e.getValue())));
         var send = new Button("Fill the form from this message", e -> {
@@ -286,7 +287,8 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
         intro.addClassName("intro");
         var formColumn = new VerticalLayout(form, new HorizontalLayout(save, clear));
         formColumn.setPadding(false);
-        formColumn.addClassName("page-scroll");
+        formColumn.setWidth(null); // the stylesheet sizes it: it reaches past the form to make room for the markers
+        formColumn.addClassNames("page-scroll", "ai-form");
         var main = new Div(heading, intro, formColumn);
         main.addClassName("page-main");
         // the message and its chat live in the panel on the right, full height, as on Insights

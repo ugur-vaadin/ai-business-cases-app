@@ -23,7 +23,6 @@ import com.vaadin.flow.component.charts.model.Configuration;
 import com.vaadin.flow.component.charts.util.ChartSerialization;
 import com.vaadin.flow.component.dashboard.DashboardWidget;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -73,6 +72,8 @@ public class InsightWidget extends DashboardWidget {
             thirty points; give the axes short titles and leave the chart title empty, the widget has its own.
             This widget is a %s and stays one. Only when the user asks for a %s, say in one sentence that the New
             Query box creates one beside this widget; otherwise do not mention it.
+            The data you see is already limited to the countries the user may see; do not add country conditions
+            unless the user asks for a specific country.
             """;
 
     /** The system prompt for a widget of the given type. */
@@ -85,24 +86,8 @@ public class InsightWidget extends DashboardWidget {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     public enum Type {
-        GRID("Create table", "Table"),
-        CHART("Create chart", "Chart");
-
-        private final String action;
-        private final String shortLabel;
-
-        Type(String action, String shortLabel) {
-            this.action = action;
-            this.shortLabel = shortLabel;
-        }
-
-        public String action() {
-            return action;
-        }
-
-        public String shortLabel() {
-            return shortLabel;
-        }
+        GRID,
+        CHART
     }
 
     /** What is stored for a widget: the SQL as text and, for charts, the queries and configuration as JSON. */
@@ -114,8 +99,13 @@ public class InsightWidget extends DashboardWidget {
     private final GridAIController gridController;
     private final ChartAIController chartController;
     private final ChatPanel chat = new ChatPanel();
-    private final Paragraph description = new Paragraph();
-    private final Span note = new Span();
+    /** Business-terms description from the model or the user; shown in the chat popover and as the tooltip. */
+    private String description = "";
+
+    /** A note about the widget's state, e.g. that a chart came back with a default look; empty when none. */
+    private String note = "";
+
+    private final Button ask = new Button(VaadinIcon.COMMENT_ELLIPSIS.create());
     private final Button edit = new Button(VaadinIcon.PENCIL.create());
     private final Icon selectedMark = VaadinIcon.CHECK_CIRCLE.create();
     private final ProgressBar progress = new ProgressBar();
@@ -157,6 +147,8 @@ public class InsightWidget extends DashboardWidget {
         } else {
             chart = null;
             grid = new Grid<>();
+            // the rows are the model's answer, not a list to pick from
+            grid.setSelectionMode(Grid.SelectionMode.NONE);
             grid.setSizeFull();
             gridController = new GridAIController(grid, db);
             gridController.addStateChangeListener(s -> {
@@ -178,7 +170,7 @@ public class InsightWidget extends DashboardWidget {
                 .withRequestInterceptor(logged.interceptor())
                 .withRequestListener(event -> {
                     logRequest.onRequest(event);
-                    note.setText("");
+                    note = "";
                     setBusy(true);
                 })
                 .withResponseListener(event -> {
@@ -191,12 +183,16 @@ public class InsightWidget extends DashboardWidget {
 
         // the description and the restore note are not shown in the widget (the screens have the title only);
         // the view shows them at the top of the widget's chat popover, and the description is the tooltip
+        ask.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        ask.setTooltipText("Ask this widget");
+        ask.setAriaLabel("Open chat");
+        ask.addClassName("widget-ask");
         edit.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         edit.setTooltipText("Rename or describe this widget");
         edit.setAriaLabel("Edit widget");
         selectedMark.addClassName("selected-mark");
         selectedMark.setVisible(false);
-        var header = new HorizontalLayout(edit, selectedMark);
+        var header = new HorizontalLayout(ask, edit, selectedMark);
         header.setSpacing(false);
         header.setAlignItems(HorizontalLayout.Alignment.CENTER);
         setHeaderContent(header);
@@ -206,7 +202,6 @@ public class InsightWidget extends DashboardWidget {
         thinking.addClassName("thinking");
         thinking.setVisible(false);
         var content = new VerticalLayout(progress, visual);
-        content.addClassName("widget-body"); // the view treats a click here as "open this widget's chat"
         content.setSizeFull();
         content.setPadding(false);
         content.setSpacing(false);
@@ -242,21 +237,26 @@ public class InsightWidget extends DashboardWidget {
     }
 
     public String description() {
-        return description.getText();
+        return description;
     }
 
     /** A note about the widget's state, e.g. that a chart was restored with a default look; empty when none. */
     public String note() {
-        return note.getText();
+        return note;
     }
 
     public void setDescription(String text) {
-        description.setText(text == null ? "" : text);
+        description = text == null ? "" : text;
         Tooltip.forComponent(this).setText(text == null || text.isBlank() ? null : text);
     }
 
     public void onEdit(SerializableConsumer<InsightWidget> handler) {
         edit.addClickListener(e -> handler.accept(this));
+    }
+
+    /** Called when the user asks for this widget's chat from the button in its header. */
+    public void onAsk(SerializableConsumer<InsightWidget> handler) {
+        ask.addClickListener(e -> handler.accept(this));
     }
 
     /**
@@ -270,6 +270,19 @@ public class InsightWidget extends DashboardWidget {
     /** Sends a question to this widget's chat. */
     public void ask(String question) {
         orchestrator.prompt(question);
+    }
+
+    /** Runs the widget's stored query again, so that a changed country filter is reflected. */
+    public void rerun() {
+        if (state() == null) {
+            return;
+        }
+        if (gridController != null) {
+            gridController.restoreState(gridController.getState());
+            decorateGrid();
+        } else {
+            chartController.restoreState(chartController.getState());
+        }
     }
 
     /** The persistable state, or {@code null} while the widget has not shown a result. */
@@ -319,7 +332,7 @@ public class InsightWidget extends DashboardWidget {
                 configuration = new Configuration();
                 configuration.getChart().setType(ChartType.COLUMN);
                 configuration.setTitle("");
-                note.setText("Restored with a default chart style; ask the chat to restyle it.");
+                note = "Restored with a default chart style; ask the chat to restyle it.";
             }
             styled(configuration);
             chartController.restoreState(new ChartState(queries, configuration));

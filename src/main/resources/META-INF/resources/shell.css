@@ -166,6 +166,21 @@ vaadin-app-layout::part(content) {
   flex: 1;
   min-height: 0;
 }
+/* a pasted message can be long; it scrolls inside its field so the chat under it never leaves the viewport */
+.page-panel .message-preview {
+  max-height: 38vh;
+  flex: none;
+}
+/* a form the AI controller marks: the badge sits 6px outside a field's top-right corner and the glow 6px outside
+   every edge, and a scrolling column clips at its edge. The column stretches outward by the same amount it pads
+   (it has no width of its own, so the negative margins widen it), so the fields stay in line with the heading and
+   keep their width while the clipping edge moves out of the markers' way */
+.page-scroll.ai-form {
+  align-self: stretch;
+  padding: 0.5rem 0.75rem;
+  margin: -0.5rem -0.75rem;
+  box-sizing: border-box;
+}
 .page-panel .panel-title {
   font-weight: 600;
   font-size: 1.1rem;

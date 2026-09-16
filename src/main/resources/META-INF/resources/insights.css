@@ -1,6 +1,6 @@
 /*
- * Insights: the page, the query panel and its prompt bar, the New Query tile, the popover beside the selected
- * widget, and the widgets themselves.
+ * Insights: the page, the query panel and its prompt bar, the New Query tile that holds it, the popover beside the
+ * selected widget, and the widgets themselves.
  */
 .insights {
   padding: var(--vaadin-padding-m, 1rem) var(--vaadin-padding-l, 1.5rem);
@@ -10,8 +10,14 @@
   width: 100%;
   align-items: flex-start;
 }
+/* the country filter belongs to the header, so it carries no field background of its own */
+.country-filter {
+  --vaadin-input-field-background: transparent;
+  border: 1px solid var(--vaadin-border-color);
+  border-radius: var(--vaadin-radius-m, 0.25rem);
+}
 
-/* ---- the prompt: centred on an empty dashboard, in the popover otherwise ---- */
+/* ---- the prompt: centred on an empty dashboard, in the New Query tile otherwise ---- */
 .insights-empty {
   flex: 1;
   width: 100%;
@@ -26,13 +32,43 @@
   gap: 0.75rem;
   width: min(820px, 100%);
 }
-.query-panel[mode="popover"] {
-  height: 100%;
-  justify-content: center;
-  gap: 1rem;
+/* in a tile the bar wraps: the question on top, the selector and the arrow under it; chips one per line */
+.query-panel[mode="tile"] {
+  align-items: stretch;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 0;
+}
+.query-panel[mode="tile"] .prompt-bar {
+  flex-wrap: wrap;
+  border-radius: 14px;
+  padding: 0.35rem 0.4rem 0.4rem 0.6rem;
+  row-gap: 0;
+}
+.query-panel[mode="tile"] .prompt-question {
+  flex-basis: 100%;
+}
+.query-panel[mode="tile"] .prompt-type {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.query-panel[mode="tile"] .chips {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+.query-panel[mode="tile"] .chips > span,
+.query-panel[mode="tile"] .footnote {
+  display: none;
+}
+.query-panel[mode="tile"] .chips vaadin-button {
+  max-width: 100%;
+  justify-content: flex-start;
 }
 .prompt-bar {
   width: 100%;
+  align-items: flex-end;   /* the field grows upwards from the arrow while typing */
   padding: 0.3rem 0.3rem 0.3rem 0.75rem;
   border: 1.5px solid var(--aura-accent-border-color);
   border-radius: 999px;
@@ -42,7 +78,7 @@
   border-color: var(--aura-accent-color);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--aura-accent-color) 18%, transparent);
 }
-.prompt-bar vaadin-text-field::part(input-field),
+.prompt-bar vaadin-text-area::part(input-field),
 .prompt-bar vaadin-select::part(input-field) {
   background: transparent;
   border: 0;
@@ -68,24 +104,25 @@
   text-align: center;
 }
 
-/* ---- the New Query tile: the last cell of the dashboard, no header, one button in the middle ---- */
+/* ---- the New Query tile: the last cell of the dashboard, no header or controls, the prompt inside ---- */
 .new-query-widget::part(header),
 .new-query-widget::part(resize-button) {
   display: none;
 }
 .new-query-widget::part(content) {
-  display: grid;
-  place-items: center;
+  padding: var(--vaadin-padding-m);
+  box-sizing: border-box;
+  overflow: auto;
 }
-.new-query-widget .new-query-button {
-  border-radius: 999px;
+.new-query-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+}
+.new-query-box .tile-title {
+  font-weight: 600;
   color: var(--aura-accent-text-color);
-  border: 1px solid var(--aura-accent-border-color);
-  background: color-mix(in srgb, var(--aura-accent-color) 10%, transparent);
-  padding-inline: 1rem;
-}
-.new-query-widget .new-query-button:hover {
-  background: color-mix(in srgb, var(--aura-accent-color) 18%, transparent);
 }
 
 /* ---- the popover beside the selected widget: its chat, or the prompt ---- */
@@ -161,7 +198,7 @@
   --vaadin-charts-color-1: oklch(from var(--aura-accent-color) l c calc(h - 40));
   --vaadin-charts-color-2: oklch(from var(--aura-accent-color) calc(l - 0.25) c h);
 }
-/* the tile whose popover is open; the dashboard's own selection follows focus and is not shown */
+/* the widget whose popover is open; the dashboard's own selection follows focus and is not shown */
 vaadin-dashboard-widget.active {
   outline: 2px solid var(--aura-accent-color);
   outline-offset: -2px;
