@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -29,20 +30,20 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
 
 import com.vaadin.demo.nordicsupply.ai.JdbcDatabaseProvider;
 import com.vaadin.demo.nordicsupply.ai.TurnLogger;
-import com.vaadin.demo.nordicsupply.config.AiDatabase;
 import com.vaadin.demo.nordicsupply.config.ModelSettings;
 import com.vaadin.demo.nordicsupply.config.PackData;
+import com.vaadin.demo.nordicsupply.config.ScopedConnections;
 import com.vaadin.demo.nordicsupply.data.ActivityLog;
 import com.vaadin.demo.nordicsupply.data.PriceChangeService;
 import com.vaadin.demo.nordicsupply.data.ProductRepository;
 import com.vaadin.demo.nordicsupply.data.Proposal;
 import com.vaadin.demo.nordicsupply.domain.ActivityView;
 import com.vaadin.demo.nordicsupply.session.CurrentUser;
+import com.vaadin.demo.nordicsupply.session.Scopes;
 import com.vaadin.demo.nordicsupply.ui.MainLayout;
 import com.vaadin.demo.nordicsupply.ui.components.ChatPanel;
 import com.vaadin.demo.nordicsupply.ui.components.HasReadme;
@@ -107,7 +108,7 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
     public BulkChangeView(
             PackData pack,
             PriceChangeService prices,
-            @AiDatabase JdbcTemplate aiJdbc,
+            ScopedConnections connections,
             Supplier<LLMProvider> providers,
             ActivityLog log,
             CurrentUser user,
@@ -185,7 +186,7 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
         reviewBox.setVisible(false);
 
         var chat = new ChatPanel();
-        var db = new JdbcDatabaseProvider(aiJdbc, pack);
+        var db = new JdbcDatabaseProvider(() -> connections.templateFor(Scopes.ALL), Optional::empty, pack);
         var controller = new ChangeController(db);
         logged = new TurnLogger(
                 log,

@@ -1,5 +1,5 @@
 /*
- * The reusable pieces: the read-only data table, the home tiles and the readme popup.
+ * The reusable pieces: the read-only data table, the home tiles, the chat panel and the readme popup.
  */
 /* ---- read-only tables and the home tiles ---- */
 .data-table {
@@ -42,6 +42,12 @@
   color: var(--vaadin-text-color-secondary);
 }
 
+/* ---- chat panel: a message list over an input ---- */
+/* the input grows with a multi-line message; the component caps it at half the viewport, which is more than the
+   panel or the popover has, so here it stops at half the chat panel and scrolls inside, leaving the list its half */
+.chat-panel vaadin-message-input {
+  max-height: 50%;
+}
 
 /* ---- readme popup: corner card, collapses to a pill ---- */
 .readme-popup {

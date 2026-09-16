@@ -18,21 +18,21 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /**
- * Two connections to one in-memory H2 database: the application's own ({@code sa}) and the AI's read-only account
- * ({@code ai_reader}, created by the pack's script, which can see the exposed tables and views and nothing else), so a
- * model-written query can never change data. The pack's CSVs are loaded at start-up through H2's CSVREAD from the
- * classpath, in the order of the pack's own loader script. The tables the application owns and the sequences its
- * inserts draw from come from Flyway ({@code db/migration}), which runs once this data source exists; that is why the
- * load happens inside the data source's factory method and not in a runner that would start after Flyway.
+ * The application's own connection to the in-memory H2 database ({@code sa}). The pack's CSVs are loaded at start-up
+ * through H2's CSVREAD from the classpath, in the order of the pack's own loader script. The tables the application
+ * owns, the sequences its inserts draw from and the filtered views the model reads come from Flyway
+ * ({@code db/migration}), which runs once this data source exists; that is why the load happens inside the data
+ * source's factory method and not in a runner that would start after Flyway. The model's queries run on the
+ * read-only accounts of {@link ScopedConnections}, never on this connection.
  */
 @Configuration
 public class DataConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataConfig.class);
-    private static final String URL = "jdbc:h2:mem:aicases;DB_CLOSE_DELAY=-1";
+    /** The in-memory database every connection of the application opens. */
+    static final String DATABASE = "jdbc:h2:mem:aicases";
 
-    /** Model-written queries are cut off after this; a runaway join must not hold a thread. */
-    private static final int AI_QUERY_TIMEOUT_SECONDS = 15;
+    private static final String URL = DATABASE + ";DB_CLOSE_DELAY=-1";
 
     @Bean
     public PackData packData(@Value("${app.pack}") String pack) {
@@ -47,29 +47,11 @@ public class DataConfig {
         return ds;
     }
 
-    /** Two {@code JdbcTemplate}s exist, so the application's is declared explicitly and marked primary. */
+    /** The application's own template; the model's queries run on the scoped connections instead. */
     @Bean
     @Primary
     public JdbcTemplate appJdbc(DataSource appDataSource) {
         return new JdbcTemplate(appDataSource);
-    }
-
-    /** The AI's connection: same database, the read-only account. */
-    @Bean
-    @AiDatabase
-    public DataSource aiDataSource(DataSource appDataSource) {
-        // no DB_CLOSE_DELAY here: H2 runs it as SET on connect, which needs admin rights; the primary connection keeps
-        // the database alive
-        return pooled("ai_reader", "ai_reader", URL.substring(0, URL.indexOf(';')));
-    }
-
-    /** The template the model's queries run on; it gives up on a query that runs too long. */
-    @Bean
-    @AiDatabase
-    public JdbcTemplate aiJdbc(@AiDatabase DataSource aiDataSource) {
-        var template = new JdbcTemplate(aiDataSource);
-        template.setQueryTimeout(AI_QUERY_TIMEOUT_SECONDS);
-        return template;
     }
 
     private static HikariDataSource pooled(String user, String password, String url) {
