@@ -51,6 +51,14 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     private static final Pattern DENIED_CALL =
             Pattern.compile("\\b(" + String.join("|", DENIED_FUNCTIONS) + ")\\s*\\(", Pattern.CASE_INSENSITIVE);
 
+    /** The two statement kinds this connection runs; a query has to start with one of them. */
+    private static final String SELECT = "SELECT";
+
+    private static final String WITH = "WITH";
+
+    /** How much of the database's message the model is given back; enough to correct the query, not a whole dump. */
+    private static final int ERROR_MESSAGE_LENGTH = 400;
+
     private final transient Supplier<JdbcTemplate> connection;
     private final transient Supplier<Optional<String>> country;
     private final transient PackData pack;
@@ -69,7 +77,8 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     @Override
     public List<Map<String, Object>> executeQuery(String sql) {
         var trimmed = sql.trim().replaceAll(";+$", "");
-        if (!trimmed.regionMatches(true, 0, "SELECT", 0, 6) && !trimmed.regionMatches(true, 0, "WITH", 0, 4)) {
+        if (!trimmed.regionMatches(true, 0, SELECT, 0, SELECT.length())
+                && !trimmed.regionMatches(true, 0, WITH, 0, WITH.length())) {
             throw new ToolException("Only SELECT statements are allowed on this connection.");
         }
         var denied = DENIED_CALL.matcher(trimmed);
@@ -107,7 +116,7 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
             });
         } catch (Exception e) {
             // the model gets the database's message and can correct the query in the same turn
-            throw new ToolException("Query failed: " + Errors.rootMessage(e, 400));
+            throw new ToolException("Query failed: " + Errors.rootMessage(e, ERROR_MESSAGE_LENGTH));
         }
     }
 

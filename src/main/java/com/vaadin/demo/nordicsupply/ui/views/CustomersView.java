@@ -7,7 +7,6 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import com.vaadin.demo.nordicsupply.config.PackData;
@@ -52,8 +51,7 @@ public class CustomersView extends VerticalLayout implements HasReadme, BeforeEn
                         new DataTable.Col<>("Country", CustomerRepository.Row::country),
                         new DataTable.Col<>("Terms (days)", CustomerRepository.Row::paymentTermsDays),
                         new DataTable.Col<>("Active", CustomerRepository.Row::active)),
-                (term, page) -> customers.search(
-                        term, PageRequest.of(page.getPageNumber(), page.getPageSize(), Sort.by("name"))),
+                (term, page) -> customers.search(term, page.withSort(Sort.by("name"))),
                 "Search name, number or city");
         add(heading, table, new ReadmePopup(README, pack.declaration().company()));
         expand(table);

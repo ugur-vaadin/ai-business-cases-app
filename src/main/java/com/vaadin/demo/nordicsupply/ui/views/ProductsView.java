@@ -7,7 +7,6 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import com.vaadin.demo.nordicsupply.config.PackData;
@@ -51,8 +50,7 @@ public class ProductsView extends VerticalLayout implements HasReadme, BeforeEnt
                         new DataTable.Col<>("Variant", ProductRepository.Row::variant),
                         new DataTable.Col<>("List price (EUR)", ProductRepository.Row::listPrice),
                         new DataTable.Col<>("Active", ProductRepository.Row::active)),
-                (term, page) ->
-                        products.search(term, PageRequest.of(page.getPageNumber(), page.getPageSize(), Sort.by("sku"))),
+                (term, page) -> products.search(term, page.withSort(Sort.by("sku"))),
                 "Search SKU, name, supplier or category");
         add(heading, table, new ReadmePopup(README, pack.declaration().company()));
         expand(table);

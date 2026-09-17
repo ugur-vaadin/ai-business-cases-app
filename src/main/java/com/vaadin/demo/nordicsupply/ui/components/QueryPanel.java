@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
@@ -84,15 +86,11 @@ public class QueryPanel extends Div {
         var send = new Button(VaadinIcon.ARROW_RIGHT.create(), e -> submit(question.getValue()));
         send.addThemeVariants(ButtonVariant.PRIMARY);
         send.setAriaLabel("Ask");
-        // Enter sends, Shift+Enter is a line break; the value travels with the key event so nothing is lost when the
-        // field has not synced yet
-        question.getElement()
-                .addEventListener(
-                        "keydown",
-                        e -> submit(e.getEventData().path("element.value").asString("")))
-                .setFilter("event.key === 'Enter' && !event.shiftKey")
-                .addEventData("element.value")
-                .preventDefault();
+        // Enter sends; a shortcut matches the key without modifiers, so Shift+Enter stays a line break in the field.
+        // The field's value is flushed to the server before the shortcut runs, so nothing typed is lost.
+        Shortcuts.addShortcutListener(question, () -> submit(question.getValue()), Key.ENTER)
+                .listenOn(question)
+                .resetFocusOnActiveElement();
         var bar = new HorizontalLayout(question, type, send);
         bar.addClassName("prompt-bar");
         bar.setAlignItems(FlexLayout.Alignment.CENTER);

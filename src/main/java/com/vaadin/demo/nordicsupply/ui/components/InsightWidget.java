@@ -55,6 +55,9 @@ public class InsightWidget extends DashboardWidget {
     /** Long enough to read a provider's error message before it disappears. */
     private static final int ERROR_NOTIFICATION_MS = 8000;
 
+    /** How much of a provider's error message the notification shows; a longer message is cut here. */
+    private static final int ERROR_MESSAGE_LENGTH = 300;
+
     static final String SYSTEM_PROMPT =
             """
             You help an analyst answer questions about live operations by querying the database described by the schema
@@ -84,6 +87,15 @@ public class InsightWidget extends DashboardWidget {
     }
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    /** The keys of the stored widget state, written by {@code state()} and read back by {@code restore}. */
+    private static final String COLSPAN = "colspan";
+
+    private static final String ROWSPAN = "rowspan";
+
+    private static final String QUERIES = "queries";
+
+    private static final String CONFIGURATION = "configuration";
 
     public enum Type {
         GRID,
@@ -288,8 +300,8 @@ public class InsightWidget extends DashboardWidget {
     /** The persistable state, or {@code null} while the widget has not shown a result. */
     public State state() {
         var json = JSON.createObjectNode();
-        json.put("colspan", getColspan());
-        json.put("rowspan", getRowspan());
+        json.put(COLSPAN, getColspan());
+        json.put(ROWSPAN, getRowspan());
         if (gridController != null) {
             var s = gridController.getState();
             return s == null ? null : new State(s.query(), json.toString());
@@ -298,9 +310,9 @@ public class InsightWidget extends DashboardWidget {
         if (s == null) {
             return null;
         }
-        var queries = json.putArray("queries");
+        var queries = json.putArray(QUERIES);
         s.queries().forEach(queries::add);
-        json.set("configuration", JSON.readTree(ChartSerialization.toJSON(s.configuration())));
+        json.set(CONFIGURATION, JSON.readTree(ChartSerialization.toJSON(s.configuration())));
         return new State(String.join("\n\n", s.queries()), json.toString());
     }
 
@@ -313,9 +325,9 @@ public class InsightWidget extends DashboardWidget {
             return;
         }
         JsonNode json = stateJson == null || stateJson.isBlank() ? null : JSON.readTree(stateJson);
-        if (json != null && json.has("colspan")) {
-            setColspan(Math.max(1, json.get("colspan").asInt(1)));
-            setRowspan(Math.max(1, json.get("rowspan").asInt(1)));
+        if (json != null && json.has(COLSPAN)) {
+            setColspan(Math.max(1, json.get(COLSPAN).asInt(1)));
+            setRowspan(Math.max(1, json.get(ROWSPAN).asInt(1)));
         }
         if (gridController != null) {
             gridController.restoreState(new GridState(sql));
@@ -323,10 +335,10 @@ public class InsightWidget extends DashboardWidget {
         } else {
             List<String> queries = new ArrayList<>();
             Configuration configuration;
-            if (json != null && json.has("queries")) {
-                json.get("queries").forEach(q -> queries.add(q.asString()));
+            if (json != null && json.has(QUERIES)) {
+                json.get(QUERIES).forEach(q -> queries.add(q.asString()));
                 configuration =
-                        ChartConfigurationParser.parse(json.get("configuration").toString());
+                        ChartConfigurationParser.parse(json.get(CONFIGURATION).toString());
             } else {
                 queries.add(sql);
                 configuration = new Configuration();
@@ -376,7 +388,7 @@ public class InsightWidget extends DashboardWidget {
         getUI().ifPresent(ui -> ui.access(() -> setBusy(false)));
         if (failed) {
             var message = "The model call failed: "
-                    + Errors.rootMessage(event.getError().get(), 300);
+                    + Errors.rootMessage(event.getError().get(), ERROR_MESSAGE_LENGTH);
             getUI().ifPresent(ui -> ui.access(() -> {
                 var n = Notification.show(message, ERROR_NOTIFICATION_MS, Notification.Position.BOTTOM_START);
                 n.addThemeVariants(NotificationVariant.ERROR);

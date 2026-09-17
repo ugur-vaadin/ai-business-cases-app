@@ -1,5 +1,7 @@
 package com.vaadin.demo.nordicsupply.ui.components;
 
+import static com.vaadin.flow.spring.data.VaadinSpringDataHelpers.toSpringPageRequest;
+
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -11,7 +13,6 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.function.ValueProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import com.vaadin.demo.nordicsupply.data.SearchTerms;
 import com.vaadin.demo.nordicsupply.util.Formats;
@@ -29,7 +30,7 @@ public class DataTable<T> extends VerticalLayout {
     private final Grid<T> grid = new Grid<>();
     private final TextField search = new TextField();
 
-    public DataTable(List<Col<T>> columns, BiFunction<String, Pageable, Page<T>> fetch, String searchPlaceholder) {
+    public DataTable(List<Col<T>> columns, BiFunction<String, PageRequest, Page<T>> fetch, String searchPlaceholder) {
         addClassName("data-table");
         setPadding(false);
         setSizeFull();
@@ -45,7 +46,8 @@ public class DataTable<T> extends VerticalLayout {
                     .setResizable(true);
         }
         grid.setSizeFull();
-        grid.setItems(q -> fetch.apply(term(), PageRequest.of(q.getPage(), q.getPageSize())).getContent().stream(), q ->
+        // the grid's page and size become a Spring page request; the view adds its own sort to it
+        grid.setItems(q -> fetch.apply(term(), toSpringPageRequest(q)).getContent().stream(), q ->
                 (int) fetch.apply(term(), PageRequest.of(0, 1)).getTotalElements());
         add(search, grid);
         expand(grid);

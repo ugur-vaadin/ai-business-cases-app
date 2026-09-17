@@ -34,6 +34,9 @@ public class DataConfig {
 
     private static final String URL = DATABASE + ";DB_CLOSE_DELAY=-1";
 
+    /** The application's own pool, shared by the read-only views and the claim form; enough for one demo session. */
+    private static final int POOL_SIZE = 8;
+
     @Bean
     public PackData packData(@Value("${app.pack}") String pack) {
         return new PackData(pack);
@@ -60,7 +63,7 @@ public class DataConfig {
         ds.setUsername(user);
         ds.setPassword(password);
         ds.setPoolName(user);
-        ds.setMaximumPoolSize(8);
+        ds.setMaximumPoolSize(POOL_SIZE);
         return ds;
     }
 

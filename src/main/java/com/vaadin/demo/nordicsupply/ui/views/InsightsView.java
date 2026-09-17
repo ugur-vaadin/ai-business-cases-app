@@ -58,6 +58,9 @@ import com.vaadin.demo.nordicsupply.ui.components.WidgetEditDialog;
 @PageTitle("Insights")
 public class InsightsView extends VerticalLayout implements HasReadme {
 
+    /** Three tiles across, as designed; the popover beside a widget is about one tile wide. */
+    private static final int MAX_COLUMNS = 3;
+
     /** Narrower than this and a chart's axis labels collide; three columns fit from about 1100px. */
     private static final String MIN_COLUMN_WIDTH = "260px";
 
@@ -188,7 +191,7 @@ public class InsightsView extends VerticalLayout implements HasReadme {
         dashboard.addClassName("insights-dashboard");
         dashboard.setWidthFull();
         dashboard.setEditable(true);
-        dashboard.setMaximumColumnCount(3); // three tiles across, as designed; the popover is about one tile wide
+        dashboard.setMaximumColumnCount(MAX_COLUMNS);
         dashboard.setMinimumColumnWidth(MIN_COLUMN_WIDTH);
         dashboard.setRowHeight(ROW_HEIGHT);
         dashboard.setGap(GAP);

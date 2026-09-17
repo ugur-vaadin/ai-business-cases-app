@@ -1,13 +1,15 @@
 package com.vaadin.demo.nordicsupply.ui.views;
 
+import static com.vaadin.flow.spring.data.VaadinSpringDataHelpers.toSpringPageRequest;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import com.vaadin.flow.component.UI;
@@ -18,7 +20,6 @@ import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.ai.provider.ToolException;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -31,6 +32,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.data.domain.PageRequest;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import com.vaadin.demo.nordicsupply.ai.JdbcDatabaseProvider;
 import com.vaadin.demo.nordicsupply.ai.TurnLogger;
@@ -62,6 +64,11 @@ import com.vaadin.demo.nordicsupply.util.Formats;
 @PageTitle("Bulk change")
 public class BulkChangeView extends VerticalLayout implements HasReadme {
 
+    /** Rows a query tool returns to the model at most; a change touching more is found with a narrower query. */
+    private static final int MAX_QUERY_ROWS = 200;
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
     static final Readme README = new Readme(
             "Bulk change",
             "Describe a price change in one sentence; review every proposed row before anything is written.",
@@ -74,7 +81,7 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
             already on promotion"*.
 
             The assistant works out which rows you mean with read-only queries and proposes a new price for each one.
-            Nothing is written until you review the list, untick the rows that look wrong, and press **Apply kept
+            Nothing is written until you review the list, deselect the rows that look wrong, and press **Apply selected
             rows**. What was applied is recorded and can be undone.
 
             ## What to look at
@@ -99,11 +106,13 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
     private final VerticalLayout reviewBox = new VerticalLayout();
     private final Paragraph reviewTitle = new Paragraph();
     private final List<Proposal> proposals = new ArrayList<>();
-    private final Set<Object> unticked = new HashSet<>();
     private LocalDate effectiveFrom;
     private String proposalDescription = "";
+    /** Outside the review box, which hides once a list is applied: the undo stays reachable until it is used. */
+    private final Button undo = new Button("Undo last applied change", e -> undo());
+
     private Long lastBatch;
-    private TurnLogger logged;
+    private final TurnLogger logged;
 
     public BulkChangeView(
             PackData pack,
@@ -151,37 +160,25 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
                 .setHeader("Current list price (EUR)")
                 .setAutoWidth(true);
         catalogue.setSizeFull();
-        catalogue.setItems(
-                q -> prices.catalogue(PageRequest.of(q.getPage(), q.getPageSize())).getContent().stream(),
-                q -> (int) prices.catalogue(PageRequest.of(0, 1)).getTotalElements());
+        catalogue.setItems(q -> prices.catalogue(toSpringPageRequest(q)).getContent().stream(), q ->
+                (int) prices.catalogue(PageRequest.of(0, 1)).getTotalElements());
 
         review.addColumn(Proposal::label).setHeader("Row").setFlexGrow(2);
         review.addColumn(p -> Formats.value(p.current())).setHeader("Current").setAutoWidth(true);
         review.addColumn(p -> Formats.value(p.proposed())).setHeader("Proposed").setAutoWidth(true);
-        review.addComponentColumn(p -> {
-                    var cb = new Checkbox(!unticked.contains(p.productId()));
-                    cb.addValueChangeListener(e -> {
-                        if (e.getValue()) {
-                            unticked.remove(p.productId());
-                        } else {
-                            unticked.add(p.productId());
-                        }
-                    });
-                    return cb;
-                })
-                .setHeader("Apply")
-                .setAutoWidth(true);
+        // the rows to apply are the grid's selection: every row starts selected, the reviewer deselects exceptions
+        review.setSelectionMode(Grid.SelectionMode.MULTI);
         review.setHeight("320px");
-        var apply = new Button("Apply kept rows", e -> apply());
+        var apply = new Button("Apply selected rows", e -> apply());
         apply.addThemeVariants(ButtonVariant.PRIMARY);
         var discard = new Button("Discard", e -> {
             log.decisionRow(
                     user.id(), ActivityView.CATALOGUE, proposalDescription, "REJECTED", "discarded by the reviewer");
             clearProposal();
         });
-        var undo = new Button("Undo last applied change", e -> undo());
         undo.addThemeVariants(ButtonVariant.TERTIARY);
-        reviewBox.add(new H3("Proposed change"), reviewTitle, review, new HorizontalLayout(apply, discard, undo));
+        undo.setEnabled(false); // nothing applied in this session yet
+        reviewBox.add(new H3("Proposed change"), reviewTitle, review, new HorizontalLayout(apply, discard));
         reviewBox.setPadding(false);
         reviewBox.setVisible(false);
 
@@ -206,7 +203,7 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
                 .withAssistantName(TurnLogger.ASSISTANT_NAME)
                 .build();
 
-        var left = new VerticalLayout(catalogue, reviewBox);
+        var left = new VerticalLayout(catalogue, reviewBox, undo);
         left.setPadding(false);
         left.setSizeFull();
         left.expand(catalogue);
@@ -250,7 +247,37 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
 
         @Override
         public List<LLMProvider.ToolSpec> getTools() {
+            // the component's tool set is the schema only; the queries the prompt asks for need a tool of their own
             var tools = new ArrayList<>(DatabaseProviderAITools.createAll(db));
+            tools.add(new LLMProvider.ToolSpec() {
+                @Override
+                public String getName() {
+                    return "run_query";
+                }
+
+                @Override
+                public String getDescription() {
+                    return "Runs a read-only SELECT on the database and returns the rows as JSON (at most "
+                            + MAX_QUERY_ROWS
+                            + "). Use it to find the rows a change applies to and their current values.";
+                }
+
+                @Override
+                public String getParametersSchema() {
+                    return """
+                            {"type":"object","properties":{
+                              "sql":{"type":"string","description":"a SELECT statement in the H2 dialect"}
+                            },"required":["sql"]}
+                            """;
+                }
+
+                @Override
+                public String execute(JsonNode args) {
+                    var rows = db.executeQuery(args.path("sql").asString(""));
+                    var shown = rows.size() > MAX_QUERY_ROWS ? rows.subList(0, MAX_QUERY_ROWS) : rows;
+                    return JSON.writeValueAsString(Map.of("total", rows.size(), "rows", shown));
+                }
+            });
             tools.add(new LLMProvider.ToolSpec() {
                 @Override
                 public String getName() {
@@ -317,13 +344,13 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
     private void showProposal(List<Proposal> list, LocalDate from, String desc) {
         proposals.clear();
         proposals.addAll(list);
-        unticked.clear();
         effectiveFrom = from;
         proposalDescription = desc;
         reviewTitle.setText(list.size() + " rows, effective " + from + ". " + desc);
         review.setItems(proposals);
+        review.asMultiSelect().setValue(new HashSet<>(proposals));
         reviewBox.setVisible(true);
-        if (logged != null && logged.lastId() > 0) {
+        if (logged.lastId() > 0) {
             log.response(
                     logged.lastId(),
                     "proposal: " + list.size() + " rows effective " + from + " — " + desc,
@@ -335,24 +362,22 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
 
     private void clearProposal() {
         proposals.clear();
-        unticked.clear();
-        review.setItems(proposals);
+        review.setItems(proposals); // also clears the selection
         reviewBox.setVisible(false);
     }
 
-    /** Hands the kept rows to the service, then records the decision and refreshes the catalogue. */
+    /** Hands the selected rows to the service, then records the decision and refreshes the catalogue. */
     private void apply() {
-        var kept = proposals.stream()
-                .filter(p -> !unticked.contains(p.productId()))
-                .toList();
+        var selected = review.getSelectedItems();
+        var kept = proposals.stream().filter(selected::contains).toList();
         if (kept.isEmpty()) {
-            Notification.show("Nothing kept");
+            Notification.show("Nothing selected");
             return;
         }
-        var rejected =
-                proposals.stream().filter(p -> unticked.contains(p.productId())).toList();
+        var rejected = proposals.stream().filter(p -> !selected.contains(p)).toList();
         var batchId = prices.apply(kept, rejected, effectiveFrom, proposalDescription, logged.lastPrompt(), user.id());
         lastBatch = batchId;
+        undo.setEnabled(true);
         log.decisionRow(
                 user.id(),
                 ActivityView.CATALOGUE,
@@ -375,6 +400,7 @@ public class BulkChangeView extends VerticalLayout implements HasReadme {
         log.decisionRow(user.id(), ActivityView.CATALOGUE, "batch " + lastBatch + " undone", "UNDONE", null);
         Notification.show("Undid batch " + lastBatch);
         lastBatch = null;
+        undo.setEnabled(false);
         catalogue.getDataProvider().refreshAll();
     }
 }

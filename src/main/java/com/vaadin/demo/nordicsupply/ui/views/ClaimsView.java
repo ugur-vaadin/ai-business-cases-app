@@ -1,5 +1,7 @@
 package com.vaadin.demo.nordicsupply.ui.views;
 
+import static com.vaadin.flow.spring.data.VaadinSpringDataHelpers.toSpringPageRequest;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -79,14 +81,20 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
     /** What a text area accepts when the column declares no length of its own. */
     private static final int DESCRIPTION_MAX_LENGTH = 1000;
 
+    /** The name of the form field for the date a customer needs an answer by. */
+    private static final String NEEDED_BY = "neededBy";
+
+    /** The name of the form field for the amount a customer claims. */
+    private static final String CLAIMED_AMOUNT = "claimedAmount";
+
     /** Which fields each claim type asks for; a field named by no type is always visible. */
     private static final Map<ClaimType, Set<String>> SECTIONS = Map.of(
-            ClaimType.DAMAGED, Set.of("neededBy", "claimedAmount"),
-            ClaimType.MISSING_ITEMS, Set.of("neededBy", "claimedAmount"),
-            ClaimType.WRONG_ITEM, Set.of("neededBy"),
-            ClaimType.LATE_DELIVERY, Set.of("claimedAmount"),
-            ClaimType.QUALITY_DEFECT, Set.of("claimedAmount"),
-            ClaimType.PRICING_DISPUTE, Set.of("claimedAmount"),
+            ClaimType.DAMAGED, Set.of(NEEDED_BY, CLAIMED_AMOUNT),
+            ClaimType.MISSING_ITEMS, Set.of(NEEDED_BY, CLAIMED_AMOUNT),
+            ClaimType.WRONG_ITEM, Set.of(NEEDED_BY),
+            ClaimType.LATE_DELIVERY, Set.of(CLAIMED_AMOUNT),
+            ClaimType.QUALITY_DEFECT, Set.of(CLAIMED_AMOUNT),
+            ClaimType.PRICING_DISPUTE, Set.of(CLAIMED_AMOUNT),
             ClaimType.RETURN_REQUEST, Set.of());
 
     static final Readme README = new Readme(
@@ -146,11 +154,8 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
         addClassName("page");
         var heading = new PageHeading("Claims", "Message to claim");
 
-        customer.setItems(query -> customers
-                .options(
-                        SearchTerms.like(query.getFilter().orElse("")),
-                        PageRequest.of(query.getPage(), query.getPageSize()))
-                .stream());
+        customer.setItems(query ->
+                customers.options(SearchTerms.like(query.getFilter().orElse("")), toSpringPageRequest(query)).stream());
         customer.setItemLabelGenerator(
                 c -> c.getName() + " · " + c.getCustomerNumber() + ", " + c.getCity() + ", " + c.getCountry());
         customer.setClearButtonVisible(true);
@@ -158,7 +163,7 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
                 .options(
                         customer.getValue() == null ? null : customer.getValue().getId(),
                         SearchTerms.like(query.getFilter().orElse("")),
-                        PageRequest.of(query.getPage(), query.getPageSize()))
+                        toSpringPageRequest(query))
                 .stream());
         order.setItemLabelGenerator(o -> o.getOrderNumber() + " · "
                 + o.getPlacedAt().toLocalDate() + ", " + o.getPromisedDeliveryDate() + ", " + o.getStatus());
@@ -167,7 +172,7 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
                 .options(
                         order.getValue() == null ? null : order.getValue().getId(),
                         SearchTerms.like(query.getFilter().orElse("")),
-                        PageRequest.of(query.getPage(), query.getPageSize()))
+                        toSpringPageRequest(query))
                 .stream());
         shipment.setItemLabelGenerator(s -> s.getShipmentNumber() + " · " + s.getCarrier() + ", pallets "
                 + s.getPalletCount()
@@ -195,7 +200,13 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
         description.setMaxLength(DESCRIPTION_MAX_LENGTH);
 
         var form = new FormLayout();
-        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("700px", 2));
+        // auto-responsive: the column count follows the width, no breakpoints to maintain; fields flow into rows
+        // on their own, the two columns share the width, and each field fills its column
+        form.setAutoResponsive(true);
+        form.setAutoRows(true);
+        form.setMaxColumns(2);
+        form.setExpandColumns(true);
+        form.setExpandFields(true);
         form.add(
                 customer,
                 order,
@@ -322,8 +333,8 @@ public class ClaimsView extends VerticalLayout implements HasReadme {
         var sectioned = SECTIONS.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
         // no type chosen yet: an immutable Map rejects a null key, and nothing is revealed anyway
         var shown = claimType.getValue() == null ? Set.<String>of() : SECTIONS.get(claimType.getValue());
-        neededBy.setVisible(!sectioned.contains("neededBy") || shown.contains("neededBy"));
-        claimedAmount.setVisible(!sectioned.contains("claimedAmount") || shown.contains("claimedAmount"));
+        neededBy.setVisible(!sectioned.contains(NEEDED_BY) || shown.contains(NEEDED_BY));
+        claimedAmount.setVisible(!sectioned.contains(CLAIMED_AMOUNT) || shown.contains(CLAIMED_AMOUNT));
     }
 
     private void save() {

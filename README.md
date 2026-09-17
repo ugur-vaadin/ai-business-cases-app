@@ -42,6 +42,9 @@ recorded in the activity log.
 Local model: `mvn spring-boot:run -Dspring-boot.run.profiles=local` with an OpenAI-compatible server on port 11434
 (Ollama) and a model that handles tool calling; `AI_BASE_URL` and `AI_MODEL` override the defaults.
 
+Presenting: `mvn spring-boot:run -Dspring-boot.run.profiles=demo` keeps development mode but switches the development
+tools and Copilot off, so nothing can appear over the app or catch a click.
+
 The theme uses `light-dark()`, `color-mix()` and relative `oklch()` colours; use a current Chrome, Edge or Firefox, or
 Safari 17.5 or newer.
 

@@ -18,6 +18,8 @@ import com.vaadin.demo.nordicsupply.session.Scopes;
 @ActiveProfiles("test")
 class ScopedConnectionsTest {
 
+    private static final String COUNTRIES_IN_ORDER = "SELECT DISTINCT country FROM customers ORDER BY country";
+
     @Autowired
     private ScopedConnections connections;
 
@@ -26,13 +28,9 @@ class ScopedConnectionsTest {
 
     @Test
     void aRoleSeesOnlyItsOwnCountries() {
-        assertThat(connections
-                        .templateFor(Scopes.FI_EE)
-                        .queryForList("SELECT DISTINCT country FROM customers ORDER BY country", String.class))
+        assertThat(connections.templateFor(Scopes.FI_EE).queryForList(COUNTRIES_IN_ORDER, String.class))
                 .containsExactly("EE", "FI");
-        assertThat(connections
-                        .templateFor(Scopes.ALL)
-                        .queryForList("SELECT DISTINCT country FROM customers ORDER BY country", String.class))
+        assertThat(connections.templateFor(Scopes.ALL).queryForList(COUNTRIES_IN_ORDER, String.class))
                 .hasSize(6);
     }
 
@@ -70,8 +68,7 @@ class ScopedConnectionsTest {
                 .isEmpty();
 
         country[0] = null;
-        assertThat(provider.executeQuery("SELECT DISTINCT country FROM customers ORDER BY country"))
-                .hasSize(2);
+        assertThat(provider.executeQuery(COUNTRIES_IN_ORDER)).hasSize(2);
     }
 
     @Test

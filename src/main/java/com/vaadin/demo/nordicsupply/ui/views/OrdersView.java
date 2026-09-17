@@ -7,7 +7,6 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import com.vaadin.demo.nordicsupply.config.PackData;
@@ -37,7 +36,7 @@ public class OrdersView extends VerticalLayout implements HasReadme, BeforeEnter
             anticipated ("which orders shipped late last month, by customer?") is what **Insights** is for.
             """);
 
-    private DataTable<SalesOrderRepository.Row> table;
+    private final DataTable<SalesOrderRepository.Row> table;
 
     public OrdersView(SalesOrderRepository orders, PackData pack) {
         setSizeFull();
@@ -53,12 +52,7 @@ public class OrdersView extends VerticalLayout implements HasReadme, BeforeEnter
                         new DataTable.Col<>("Promised delivery", SalesOrderRepository.Row::promisedDeliveryDate),
                         new DataTable.Col<>("Channel", SalesOrderRepository.Row::channel),
                         new DataTable.Col<>("Net (EUR)", SalesOrderRepository.Row::totalNet)),
-                (term, page) -> orders.search(
-                        term,
-                        PageRequest.of(
-                                page.getPageNumber(),
-                                page.getPageSize(),
-                                Sort.by(Sort.Direction.DESC, "placedAt", "id"))),
+                (term, page) -> orders.search(term, page.withSort(Sort.by(Sort.Direction.DESC, "placedAt", "id"))),
                 "Search order number, customer or status");
         add(heading, table, new ReadmePopup(README, pack.declaration().company()));
         expand(table);
