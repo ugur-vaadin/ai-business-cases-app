@@ -2,23 +2,27 @@ package com.vaadin.demo.nordicsupply.ui;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.avatar.Avatar;
+import com.vaadin.flow.component.avatar.AvatarVariant;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverPosition;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 
 import com.vaadin.demo.nordicsupply.config.PackData;
 import com.vaadin.demo.nordicsupply.session.CurrentUser;
 import com.vaadin.demo.nordicsupply.ui.components.HasReadme;
+import com.vaadin.demo.nordicsupply.ui.components.POIIndicator;
 import com.vaadin.demo.nordicsupply.ui.components.Readme;
 import com.vaadin.demo.nordicsupply.ui.components.ReadmePopup;
 import com.vaadin.demo.nordicsupply.ui.views.ActivityLogView;
@@ -42,9 +46,8 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     public MainLayout(PackData pack, CurrentUser currentUser) {
         var decl = pack.declaration();
-        setPrimarySection(Section.DRAWER);
 
-        var mark = new Div(VaadinIcon.ANGLE_LEFT.create());
+        var mark = new Div(new SvgIcon("icons/compass.svg"));
         mark.addClassName("mark");
         var name = new Span(decl.company());
         name.addClassName("name");
@@ -52,12 +55,15 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         wordmark.addClassName("wordmark");
 
         var nav = new SideNav();
-        nav.addItem(new SideNavItem("Home", HomeView.class, VaadinIcon.HOME.create()));
-        nav.addItem(new SideNavItem("Orders", OrdersView.class, VaadinIcon.TRUCK.create()));
-        nav.addItem(new SideNavItem("Customers", CustomersView.class, VaadinIcon.USER.create()));
-        nav.addItem(new SideNavItem("Products", ProductsView.class, VaadinIcon.PACKAGE.create()));
-        nav.addItem(new SideNavItem("Claims", ClaimsView.class, VaadinIcon.ENVELOPE.create()));
-        nav.addItem(new SideNavItem("Insights", InsightsView.class, VaadinIcon.BAR_CHART.create()));
+        nav.addItem(new SideNavItem("Home", HomeView.class, new SvgIcon("icons/house.svg")));
+        nav.addItem(new SideNavItem("Orders", OrdersView.class, new SvgIcon("icons/truck.svg")));
+        nav.addItem(new SideNavItem("Customers", CustomersView.class, new SvgIcon("icons/square-user.svg")));
+        nav.addItem(new SideNavItem("Products", ProductsView.class, new SvgIcon("icons/package.svg")));
+        nav.addItem(new SideNavItem("Claims", ClaimsView.class, new SvgIcon("icons/redo-2.svg")));
+
+        var insightsItem = new SideNavItem("Insights", InsightsView.class, new SvgIcon("icons/file-chart-column.svg"));
+        insightsItem.setSuffixComponent(new POIIndicator("Important demo behavior to see"));
+        nav.addItem(insightsItem);
 
         var bottomNav = new SideNav();
         bottomNav.addItem(new SideNavItem("Activity log", ActivityLogView.class, VaadinIcon.CLIPBOARD_TEXT.create()));
@@ -68,7 +74,9 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         });
         help.addClassName("rail-button");
         help.addThemeVariants(ButtonVariant.TERTIARY);
-        var user = new Button(currentUser.get().name(), VaadinIcon.USER_CARD.create());
+        var avatar = new Avatar();
+        avatar.addThemeVariants(AvatarVariant.XSMALL);
+        var user = new Button(currentUser.get().name(), avatar);
         user.addClassName("rail-button");
         user.addThemeVariants(ButtonVariant.TERTIARY);
         user.setTooltipText("Signed in as " + currentUser.get() + " · click to switch");
@@ -85,16 +93,10 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         switcher.setTarget(user);
         switcher.setPosition(PopoverPosition.END_BOTTOM);
         switcher.setModal(true, false);
-        var bottom = new Div(bottomNav, help, user);
-        bottom.addClassName("rail-bottom");
 
-        var rail = new VerticalLayout(wordmark, nav, bottom);
-        rail.addClassName("app-rail");
-        rail.setPadding(false);
-        rail.setSpacing(false);
-        rail.setSizeFull();
-        rail.add(switcher);
-        addToDrawer(rail);
+        var drawer = new Div(wordmark, new Scroller(nav), bottomNav, help, user);
+        drawer.addClassName("drawer");
+        addToDrawer(drawer);
     }
 
     @Override

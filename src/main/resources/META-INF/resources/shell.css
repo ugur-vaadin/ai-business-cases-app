@@ -2,6 +2,61 @@
  * The application shell: the rail, the page heading and its watermark, and the split pages (a main column with a
  * full-height panel beside it) that Claims and Bulk change share.
  */
+html {
+  --aura-app-layout-inset: 0px;
+
+  --vaadin-button-font-weight: var(--aura-font-weight-semibold);
+  --vaadin-side-nav-item-font-weight: var(--aura-font-weight-semibold);
+
+  --vaadin-side-nav-item-padding: var(--vaadin-padding-block-container) var(--vaadin-padding-m);
+  --vaadin-side-nav-items-gap: var(--vaadin-gap-s);
+}
+
+vaadin-app-layout {
+  &::part(content) {
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  &:not([overlay]) vaadin-drawer-toggle {
+    display: none;
+  }
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--vaadin-padding-xl);
+  gap: var(--vaadin-side-nav-items-gap);
+  min-width: 14rem;
+
+  vaadin-scroller {
+    flex: 1;
+    margin-inline: calc(var(--vaadin-padding-xl) * -1);
+    --vaadin-scroller-padding-block: var(--vaadin-padding-s);
+    --vaadin-scroller-padding-inline: var(--vaadin-padding-xl);
+    --vaadin-scroller-overflow-indicator-top-opacity: 1;
+    --vaadin-scroller-overflow-indicator-bottom-opacity: 1;
+    outline-offset: -2px;
+  }
+}
+
+vaadin-side-nav-item[current] {
+  &::part(content) {
+    --aura-surface-opacity: 0.7;
+    --vaadin-side-nav-item-text-color: var(--vaadin-text-color);
+    background-clip: border-box;
+  }
+
+  > vaadin-icon[slot=prefix] {
+    color: var(--aura-accent-text-color);
+  }
+}
+
+
 /* ---- shared text roles ---- */
 .intro {
   color: var(--vaadin-text-color-secondary);
@@ -17,6 +72,7 @@
   line-height: 1.05;
 }
 .page-title {
+  grid-column: 2;
   font-family: var(--app-display-font);
   font-size: 1.7rem;
   font-weight: 800;
@@ -26,6 +82,7 @@
   margin: 0;
 }
 .page-subtitle {
+  grid-column: 2;
   font-family: var(--app-display-font);
   font-size: 0.75rem;
   font-weight: 700;
@@ -36,57 +93,54 @@
 }
 
 /* ---- the rail (drawer) ---- */
-vaadin-app-layout::part(drawer) {
-  width: 230px;
-}
-vaadin-app-layout::part(content) {
-  padding: 0;   /* views bring their own padding; the split pages run their panel edge to edge */
-}
-.app-rail {
-  height: 100%;
-  padding: 1.25rem 0.75rem 1rem;
-  gap: 0.25rem;
-}
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.25rem 0.75rem 1rem;
-  font-family: var(--app-display-font);
-  font-weight: 800;
-  font-style: italic;
-  font-size: 0.95rem;
-  line-height: 0.92;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  color: var(--vaadin-text-color);
+  gap: var(--vaadin-side-nav-items-gap);
+  padding: var(--vaadin-side-nav-item-padding);
 }
+
 .wordmark .mark {
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  border-radius: var(--vaadin-radius-m);
   background: var(--aura-accent-color);
   color: var(--aura-accent-contrast-color);
-  display: grid;
-  place-items: center;
 }
-.wordmark .mark vaadin-icon {
-  width: 14px;
-  height: 14px;
-}
+
 .wordmark .name {
-  width: 5.5em;
+  width: min-content;
+  font-weight: 800;
+  font-style: italic;
+  font-stretch: 90%;
+  font-width: 90%;
+  font-size: 0.95rem;
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--vaadin-text-color);
+  text-indent: 0.2em;
 }
-.rail-bottom {
-  margin-top: auto;
-}
+
 .rail-button {
   justify-content: flex-start;
   width: 100%;
-  font-weight: 500;
-}
+  padding: var(--vaadin-side-nav-item-padding);
+  color: var(--vaadin-text-color-secondary);
 
+  &:hover {
+    color: var(--vaadin-text-color);
+  }
+
+  &[active] {
+    scale: 1;
+  }
+
+  vaadin-icon {
+    opacity: 0.8;
+  }
+
+  --vaadin-avatar-size: calc(1lh + var(--vaadin-focus-ring-width, 2px) * 2);
+}
 
 /* ---- pages: every view positions the watermark against itself ---- */
 .page {

@@ -1,5 +1,6 @@
 package com.vaadin.demo.nordicsupply.ui.components;
 
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 
@@ -19,6 +20,6 @@ public class PageHeading extends Div {
         t.addClassName("page-title");
         var s = new Span(subtitle);
         s.addClassName("page-subtitle");
-        add(watermark, t, s);
+        add(new DrawerToggle(), watermark, t, s);
     }
 }
